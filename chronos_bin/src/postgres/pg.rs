@@ -157,7 +157,7 @@ impl Pg {
         let mut pg_access = PgAccess { client: pg_client };
         let pg_txn: PgTxn = pg_access.build_txn().await?;
         let insert_query = "INSERT INTO hanger (id, deadline,  message_headers, message_key, message_value)
-        VALUES ($1, $2 ,$3, $4, $5 )";
+        VALUES ($1, $2 ,$3, $4, $5 ) ";
 
         let query_execute_instant = Instant::now();
         let stmt = pg_txn.txn.prepare(insert_query).await?;
@@ -183,7 +183,6 @@ impl Pg {
             event!(tracing::Level::INFO, "insert_to_delay success");
             let cmt_rdy = pg_txn.txn.commit().await;
             if let Err(e) = cmt_rdy {
-                error!("Unable to commit: {}. The original transaction updated rows", e);
                 return Err(PgError::UnknownException(e));
             }
         }
@@ -193,19 +192,18 @@ impl Pg {
     #[tracing::instrument(skip_all)]
     pub(crate) async fn delete_fired(&self, ids: &Vec<String>) -> Result<u64, String> {
         // let query_execute_instant = Instant::now();
+        let method_name = "delete_fired";
         let pg_client = match self.get_client().await {
             Ok(client) => client,
             Err(e) => {
-                error!("delete_fired: Unable to get client: {}", e);
-                return Err(format!("delete_fired: Unable to get client: {}", e));
+                return Err(format!("{}: Unable to get client: {}", method_name, e));
             }
         };
         let mut pg_access = PgAccess { client: pg_client };
         let pg_txn: PgTxn = match pg_access.build_txn().await {
             Ok(txn) => txn,
             Err(e) => {
-                error!("delete_fired: Unable to start transaction: {}", e);
-                return Err(format!("delete_fired: Unable to start transaction: {}", e));
+                return Err(format!("{}: Unable to start transaction: {}", method_name, e));
             }
         };
 
@@ -218,8 +216,7 @@ impl Pg {
         query = match query.strip_suffix(',') {
             Some(query) => query.to_string(),
             None => {
-                error!("reset_to_init: Unable to strip suffix");
-                return Err("reset_to_init: Unable to strip suffix".to_string());
+                return Err(format!("{}: Unable to strip suffix", method_name));
             }
         };
         query += ")";
@@ -227,8 +224,7 @@ impl Pg {
         let stmt = match pg_txn.txn.prepare(query.as_str()).await {
             Ok(stmt) => stmt,
             Err(e) => {
-                error!("delete_fired: Unable to prepare query: {}", e);
-                return Err(format!("delete_fired: Unable to prepare query: {}", e));
+                return Err(format!("{}: Unable to prepare query: {}", method_name, e));
             }
         };
         let response = pg_txn.txn.execute(&stmt, &values_as_slice).await;
@@ -236,51 +232,45 @@ impl Pg {
             Ok(resp) => {
                 let cmt_rdy = pg_txn.txn.commit().await;
                 if let Err(e) = cmt_rdy {
-                    error!("delete_fired: Unable to commit: {}. The original transaction updated: rows", e,);
-                    return Err(format!("Unable to commit: {}. The original transaction updated rows", e));
+                    return Err(format!("{}: Unable to commit: {}. The original transaction updated rows", method_name, e));
                 }
                 Ok(resp)
             }
             Err(e) => {
                 if let Some(err_code) = e.code() {
                     if err_code == &SqlState::T_R_SERIALIZATION_FAILURE {
-                        error!("delete_fired: Unable to execute txn due to : {}", e);
-                        return Err(format!("delete_fired: Unable to execute txn due to : {}", e));
+                        return Err(format!("{}: Unable to execute txn due to : {}", method_name, e));
                     }
                 }
-                Err(format!("delete_fired: Unknow exception {:?}", e))
+                Err(format!("{}: Unknow exception {:?}", method_name, e))
             }
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    // #[tracing::instrument(skip_all)]
     pub(crate) async fn ready_to_fire_db(&self, param: &GetReady) -> Result<Vec<Row>, String> {
         //TODO handle get client error gracefully
+        let method_name = "ready_to_fire_db";
         let pg_client = match self.get_client().await {
             Ok(client) => client,
             Err(e) => {
-                error!("ready_to_fire: Unable to get client: {}", e);
-                return Err(format!("ready_to_fire: Unable to get client: {}", e));
+                return Err(format!("{}: Unable to get client: {}", method_name, e));
             }
         };
         let mut pg_access = PgAccess { client: pg_client };
         let pg_txn: PgTxn = match pg_access.build_txn().await {
             Ok(txn) => txn,
             Err(e) => {
-                error!("delete_fired: Unable to start transaction: {}", e);
-                return Err(format!("delete_fired: Unable to start transaction: {}", e));
+                return Err(format!("{}: Unable to start transaction: {}", method_name, e));
             }
         };
 
         let ready_query = "UPDATE hanger SET readied_at = $1, readied_by = $2 where deadline < $3 AND readied_at IS NULL RETURNING id, deadline, readied_at, readied_by, message_headers, message_key, message_value";
 
-        // println!("ready_query: {}", ready_query);
-        // if let Ok(stmt) = pg_txn.txn.prepare(ready_query).await {
         let stmt = match pg_txn.txn.prepare(ready_query).await {
             Ok(stmt) => stmt,
             Err(e) => {
-                error!("ready_to_fire: Unable to prepare query: {}", e);
-                return Err(format!("ready_to_fire: Unable to prepare query: {}", e));
+                return Err(format!("{}: Unable to prepare query: {}", method_name, e));
             }
         };
 
@@ -291,46 +281,45 @@ impl Pg {
             Ok(resp) => {
                 let cmt_rdy = pg_txn.txn.commit().await;
                 if let Err(e) = cmt_rdy {
-                    error!("Unable to commit: {}. The original transaction updated: {:?} rows", e, resp);
                     return Err(format!(
-                        "ready_to_fire: Unable to commit: {}. The original transaction updated: {:?} rows",
-                        e, resp
+                        "{}: Unable to commit: {}. The original transaction updated: {:?} rows",
+                        method_name, e, resp
                     ));
                 }
                 let time_elapsed = query_execute_instant.elapsed();
                 if time_elapsed > Duration::from_millis(100) {
-                    log::warn!(" ready_to_fire query_execute_instant: {:?} params: {:?}", time_elapsed, param);
+                    log::warn!("{}: query_execute_instant: {:?} params: {:?}", method_name, time_elapsed, param);
                 }
                 Ok(resp)
             }
             Err(e) => {
                 if let Some(err_code) = e.code() {
                     if err_code == &SqlState::T_R_SERIALIZATION_FAILURE {
-                        error!("ready_to_fire: Unable to execute txn due to : {}", e);
-                        return Err(format!("ready_to_fire: Unable to execute txn due to : {}", e));
+                        log::warn!("{}: serialization failure params: {:?}", method_name, param);
+                        // not throw error, just return empty vector
+                        return Ok(Vec::new());
                     }
                 }
-                error!("ready_to_fire: Unknow exception {:?}", e);
-                Err(format!("ready_to_fire: Unknow exception {:?}", e))
+                Err(format!("{}: Unknow exception {:?}", method_name, e))
             }
         }
     }
 
     #[tracing::instrument(skip_all)]
     pub(crate) async fn failed_to_fire_db(&self, delay_time: &DateTime<Utc>) -> Result<Vec<Row>, PgError> {
+        let method_name = "failed_to_fire_db";
         let query_execute_instant = Instant::now();
         let pg_client = self.get_client().await?;
         let mut pg_access = PgAccess { client: pg_client };
         let pg_txn: PgTxn = pg_access.build_txn().await?;
 
-        log::debug!("failed_to_fire param delay_time: {:?}", delay_time);
-        let get_query = "SELECT * from hanger where readied_at > $1 ORDER BY deadline DESC";
+        let get_query = "SELECT * from hanger where readied_at < $1 ORDER BY deadline DESC";
         let stmt = pg_txn.txn.prepare(get_query).await?;
 
         let response = pg_txn.txn.query(&stmt, &[&delay_time]).await?;
         let time_elapsed = query_execute_instant.elapsed();
         if time_elapsed > Duration::from_millis(100) {
-            log::warn!(" failed_to_fire query_execute_instant: {:?} ", time_elapsed);
+            log::info!("{}: query_execute_instant: {:?} ", method_name, time_elapsed);
         }
 
         Ok(response)
@@ -338,6 +327,8 @@ impl Pg {
 
     #[tracing::instrument(skip_all)]
     pub(crate) async fn reset_to_init_db(&self, to_init_list: &Vec<Row>) -> Result<Vec<String>, String> {
+        let method_name = "reset_to_init_db";
+        println!("to_init_list: {:?}", to_init_list);
         let query_execute_instant = Instant::now();
         let mut id_list = Vec::<String>::new();
         for row in to_init_list {
@@ -347,7 +338,6 @@ impl Pg {
         let pg_client = match self.get_client().await {
             Ok(client) => client,
             Err(e) => {
-                error!("reset_to_init: Unable to get client: {}", e);
                 return Err(format!("reset_to_init: Unable to get client: {}", e));
             }
         };
@@ -355,8 +345,7 @@ impl Pg {
         let pg_txn: PgTxn = match pg_access.build_txn().await {
             Ok(txn) => txn,
             Err(e) => {
-                error!("delete_fired: Unable to start transaction: {}", e);
-                return Err(format!("delete_fired: Unable to start transaction: {}", e));
+                return Err(format!("{}: Unable to start transaction: {}", method_name, e));
             }
         };
 
@@ -366,22 +355,19 @@ impl Pg {
         for i in 0..id_list.len() {
             query = query + "$" + (i + 1).to_string().as_str() + ",";
         }
+        println!("query: {}", query);
         query = match query.strip_suffix(',') {
             Some(query) => query.to_string(),
             None => {
-                error!("reset_to_init: Unable to strip suffix");
-                return Err("reset_to_init: Unable to strip suffix".to_string());
+                return Err(format!("{}: Unable to strip suffix", method_name));
             }
         };
         query += ")";
 
-        println!("query: {}", query);
-
         let stmt = match pg_txn.txn.prepare(query.as_str()).await {
             Ok(stmt) => stmt,
             Err(e) => {
-                error!("reset_to_init: Unable to prepare query: {}", e);
-                return Err(format!("reset_to_init: Unable to prepare query: {}", e));
+                return Err(format!("{}: Unable to prepare query: {}", method_name, e));
             }
         };
         let response = pg_txn.txn.execute(&stmt, &values_as_slice[..]).await;
@@ -390,24 +376,25 @@ impl Pg {
             Ok(resp) => {
                 let cmt_rdy = pg_txn.txn.commit().await;
                 if let Err(e) = cmt_rdy {
-                    error!("Unable to commit: {}. The original transaction updated: {:?} rows", e, resp);
-                    return Err(format!("Unable to commit: {}. The original transaction updated: {:?} rows", e, resp));
+                    return Err(format!(
+                        "{}: Unable to commit: {}. The original transaction updated: {:?} rows",
+                        method_name, e, resp
+                    ));
                 }
                 let time_elapsed = query_execute_instant.elapsed();
+                log::warn!("{}: suspected failure of monitor: {:?} rows", method_name, resp);
                 if time_elapsed > Duration::from_millis(100) {
-                    log::warn!(" ready_to_fire query_execute_instant: {:?} ", time_elapsed);
+                    log::warn!("{}: query_execute_instant: {:?} ", method_name, time_elapsed);
                 }
                 Ok(id_list)
             }
             Err(e) => {
-                error!("reset_to_init: Unable to execute txn due to : {}", e);
                 if let Some(err_code) = e.code() {
                     if err_code == &SqlState::T_R_SERIALIZATION_FAILURE {
-                        error!("reset_to_init: Unable to execute txn due to : {}", e);
-                        return Err(format!("reset_to_init: Unable to execute txn due to : {}", e));
+                        return Err(format!("{}: Unable to execute txn due to : {}", method_name, e));
                     }
                 }
-                Err(format!("reset_to_init: Unknow exception {:?}", e))
+                Err(format!("{}: Unknow exception {:?}", method_name, e))
             }
         }
     }

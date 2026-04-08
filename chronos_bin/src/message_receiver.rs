@@ -95,6 +95,8 @@ impl MessageReceiver {
                     tracing::Span::current().record("error", &err_string);
                 }
             }
+        } else {
+            log::warn!("message receiver: required headers not found");
         }
     }
 

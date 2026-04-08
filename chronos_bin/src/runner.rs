@@ -24,10 +24,16 @@ impl Runner {
         let receiver_prod = self.producer.clone();
         let receiver_consumer = self.consumer.clone();
 
+        // monitors the DB in a loop with a timeout
+        // selects tasks in desc order
+        // checks if ready to be published then mark as ready
+        // mark ready for the ones missed deadlines
         let monitor_handler = tokio::task::spawn(async {
             let monitor = FailureDetector { data_store: monitor_ds };
             monitor.run().await;
         });
+        // to publish ready tasks
+        // delete fired tasks from DB
         let message_processor_handler = tokio::task::spawn(async {
             let message_processor = MessageProcessor {
                 producer: process_producer,
@@ -35,6 +41,11 @@ impl Runner {
             };
             message_processor.run().await;
         });
+
+        //kafka-consumer checks if the task headers are valid
+        //if valid, it checks if the task is passed the deadline
+        //if passed, it publishes the task
+        //if not passed, it inserts the task to DB
         let message_receiver_handler = tokio::task::spawn(async {
             let message_receiver = MessageReceiver {
                 consumer: receiver_consumer,

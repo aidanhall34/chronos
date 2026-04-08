@@ -76,25 +76,45 @@ impl MessageProcessor {
     #[tracing::instrument(skip_all, fields(deleted_ids))]
     async fn delete_fired_records_from_db(&self, ids: &Vec<String>) {
         //retry loop
+        let method_name = "delete_fired_records_from_db";
         let max_retry_count = 3;
         let mut retry_count = 0;
         while let Err(outcome_error) = &self.data_store.delete_fired(ids).await {
-            log::error!("Error: error occurred in message processor {}", outcome_error);
+            log::error!("{}: error occurred in message processor {}", method_name, outcome_error);
             retry_count += 1;
             if retry_count == max_retry_count {
-                log::error!("Error: max retry count {} reached by node {:?} for deleting fired ids ", max_retry_count, ids);
+                log::error!(
+                    "{}: max retry count {} reached by node {:?} for deleting fired ids ",
+                    method_name,
+                    max_retry_count,
+                    ids
+                );
                 break;
             }
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    async fn retry_loop(&self, param: &GetReady) -> Result<Vec<Row>, String> {
+        let max_retry_count = 3;
+        let mut retry_count = 0;
+        loop {
+            match self.data_store.ready_to_fire_db(param).await {
+                Ok(rows) => return Ok(rows),
+                Err(e) => {
+                    retry_count += 1;
+                    if retry_count >= max_retry_count {
+                        return Err(e);
+                    }
+                    tokio::time::sleep(std::time::Duration::from_millis(20 * retry_count as u64)).await;
+                }
+            }
+        }
+    }
+
+    // #[tracing::instrument(skip_all)]
     async fn processor_message_ready(&self, node_id: Uuid) {
         loop {
-            log::debug!("retry loop");
-            // thread::sleep(Duration::from_millis(100));
-            let max_retry_count = 3;
-            let mut retry_count = 0;
+            let method_name = "processor_message_ready";
 
             let deadline = Utc::now() - Duration::from_secs(ChronosConfig::from_env().time_advance);
 
@@ -106,12 +126,11 @@ impl MessageProcessor {
                 // order: "asc",
             };
 
-            let readied_by_column: Option<String> = None;
-            let resp: Result<Vec<Row>, String> = self.data_store.ready_to_fire_db(&param).await;
+            let resp: Result<Vec<Row>, String> = self.retry_loop(&param).await;
             match resp {
                 Ok(ready_to_publish_rows) => {
                     if ready_to_publish_rows.is_empty() {
-                        log::debug!("no rows ready to fire for dealine {}", deadline);
+                        log::debug!("{}: no rows ready to fire for dealine {}", method_name, deadline);
                         break;
                     } else {
                         let publish_futures = ready_to_publish_rows.into_iter().map(|row| self.prepare_to_publish(row));
@@ -124,21 +143,18 @@ impl MessageProcessor {
 
                         if !ids.is_empty() {
                             let _ = self.delete_fired_records_from_db(&ids).await;
-                            log::debug!("number of rows published successfully and deleted from DB {}", ids.len());
+                            log::debug!("{}: number of rows published successfully and deleted from DB {}", method_name, ids.len());
                             break;
                         }
                     }
                 }
                 Err(e) => {
-                    if e.contains("could not serialize access due to concurrent update") && retry_count < max_retry_count {
-                        //retry goes here
-                        retry_count += 1;
-                        if retry_count == max_retry_count {
-                            log::error!("Error: max retry count {} reached by node {:?} for row ", max_retry_count, readied_by_column);
-                            break;
-                        }
+                    // if DB is locked, log a warning and continue
+                    if e.contains("could not serialize access due to concurrent update") {
+                        log::warn!("{}: could not serialize access due to concurrent update", method_name);
                     }
-                    log::error!("Error: error occurred in message processor while publishing {}", e);
+
+                    log::error!("{}: occurred while processing message ready {}", method_name, e);
                 }
             }
         }

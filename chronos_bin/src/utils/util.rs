@@ -36,7 +36,6 @@ pub fn into_headers(headers: &HashMap<String, String>) -> OwnedHeaders {
 }
 
 pub fn headers_check(headers: &BorrowedHeaders) -> bool {
-    // println!("headers_check {:?}", headers);
     let outcome = headers
         .iter()
         .filter(|h| {
