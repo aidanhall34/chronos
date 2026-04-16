@@ -7,7 +7,7 @@ use rdkafka::message::BorrowedMessage;
 
 use super::config::KafkaConfig;
 
-use tracing::{instrument, trace, warn};
+use tracing::{trace, warn};
 
 // Kafka Consumer Client
 pub struct KafkaConsumer {

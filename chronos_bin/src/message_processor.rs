@@ -1,4 +1,5 @@
 use crate::kafka::producer::KafkaProducer;
+use crate::metrics::ChronosMetrics;
 use crate::postgres::pg::{GetReady, Pg, TableRow};
 use crate::utils::config::ChronosConfig;
 use crate::utils::delay_controller::DelayController;
@@ -12,6 +13,7 @@ use uuid::Uuid;
 pub struct MessageProcessor {
     pub(crate) data_store: Arc<Pg>,
     pub(crate) producer: Arc<KafkaProducer>,
+    pub(crate) metrics: Arc<ChronosMetrics>,
 }
 
 impl MessageProcessor {
@@ -49,6 +51,9 @@ impl MessageProcessor {
             }
         };
 
+        // Capture deadline before updated_row fields are moved into the publish call.
+        let deadline = updated_row.deadline;
+
         let readied_by_column = Some(updated_row.readied_by.to_string());
         tracing::Span::current().record("correlationId", &readied_by_column);
 
@@ -60,6 +65,10 @@ impl MessageProcessor {
                     .kafka_publish(updated_row.message_value.to_string(), Some(headers), updated_row.message_key.to_string())
                     .await
                 {
+                    // msg_jitter: difference between actual publish time and client-requested deadline.
+                    // Floored at 0 to guard against clock skew producing negative jitter.
+                    let jitter_secs = (Utc::now() - deadline).num_milliseconds().max(0) as f64 / 1000.0;
+                    self.metrics.msg_jitter.observe(jitter_secs);
                     Ok(id)
                 } else {
                     Err("error occurred while publishing".to_string())
@@ -88,11 +97,14 @@ impl MessageProcessor {
         }
     }
 
+    /// Returns `(returned, status)` where:
+    ///   - `returned = true`  means the loop exited early (no rows ready to fire)
+    ///   - `returned = false` means rows were processed (or a terminal error occurred)
+    ///   - `status = "pass"` on success, `"fail"` on unrecoverable error
     #[tracing::instrument(skip_all)]
-    async fn processor_message_ready(&self, node_id: Uuid) {
+    async fn processor_message_ready(&self, node_id: Uuid) -> (bool, &'static str) {
         loop {
             log::debug!("retry loop");
-            // thread::sleep(Duration::from_millis(100));
             let max_retry_count = 3;
             let mut retry_count = 0;
 
@@ -102,8 +114,6 @@ impl MessageProcessor {
                 readied_at: deadline,
                 readied_by: node_id,
                 deadline,
-                // limit: 1000,
-                // order: "asc",
             };
 
             let readied_by_column: Option<String> = None;
@@ -111,31 +121,28 @@ impl MessageProcessor {
             match resp {
                 Ok(ready_to_publish_rows) => {
                     if ready_to_publish_rows.is_empty() {
-                        log::debug!("no rows ready to fire for dealine {}", deadline);
-                        break;
+                        log::debug!("no rows ready to fire for deadline {}", deadline);
+                        return (true, "pass");
                     } else {
                         let publish_futures = ready_to_publish_rows.into_iter().map(|row| self.prepare_to_publish(row));
 
                         let results = futures::future::join_all(publish_futures).await;
-
-                        // closure to gather ids from results vector and ignore error from result
 
                         let ids: Vec<String> = results.into_iter().filter_map(|result| result.ok()).collect();
 
                         if !ids.is_empty() {
                             let _ = self.delete_fired_records_from_db(&ids).await;
                             log::debug!("number of rows published successfully and deleted from DB {}", ids.len());
-                            break;
+                            return (false, "pass");
                         }
                     }
                 }
                 Err(e) => {
                     if e.contains("could not serialize access due to concurrent update") && retry_count < max_retry_count {
-                        //retry goes here
                         retry_count += 1;
                         if retry_count == max_retry_count {
                             log::error!("Error: max retry count {} reached by node {:?} for row ", max_retry_count, readied_by_column);
-                            break;
+                            return (false, "fail");
                         }
                     }
                     log::error!("Error: error occurred in message processor while publishing {}", e);
@@ -143,6 +150,7 @@ impl MessageProcessor {
             }
         }
     }
+
     pub async fn run(&self) {
         log::info!("MessageProcessor ON!");
 
@@ -154,9 +162,43 @@ impl MessageProcessor {
         loop {
             log::debug!("MessageProcessor loop");
             tokio::time::sleep(Duration::from_millis(10)).await;
-            self.processor_message_ready(node_id).await;
+
+            // msg_process_latency: time the full processor_message_ready() call.
+            let timer = std::time::Instant::now();
+            let (returned, status) = self.processor_message_ready(node_id).await;
+            let elapsed = timer.elapsed().as_secs_f64();
+            if let Ok(obs) = self.metrics.msg_process_latency.get_metric_with_label_values(&[&returned.to_string(), status]) {
+                obs.observe(elapsed);
+            } else {
+                log::error!("metrics: failed to observe msg_process_latency");
+            }
 
             delay_controller.sleep().await;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::metrics::ChronosMetrics;
+
+    #[test]
+    fn test_jitter_calculation_positive() {
+        use chrono::{Duration, Utc};
+        let deadline = Utc::now() - Duration::milliseconds(300);
+        let jitter_ms = (Utc::now() - deadline).num_milliseconds().max(0);
+        assert!(jitter_ms >= 300, "jitter should be at least 300ms when deadline was 300ms ago");
+    }
+
+    #[test]
+    fn test_jitter_below_500ms_within_sla() {
+        let metrics = ChronosMetrics::new().unwrap();
+        // A 300ms jitter is within the 500ms SLA — must land in the <=0.5s bucket
+        metrics.msg_jitter.observe(0.3);
+        let families = metrics.registry.gather();
+        let fam = families.iter().find(|f| f.get_name() == "msg_jitter").unwrap();
+        let hist = fam.get_metric()[0].get_histogram();
+        let bucket_500 = hist.get_bucket().iter().find(|b| (b.get_upper_bound() - 0.5).abs() < 1e-9).unwrap();
+        assert_eq!(bucket_500.get_cumulative_count(), 1, "300ms jitter must be counted in the <=500ms bucket");
     }
 }

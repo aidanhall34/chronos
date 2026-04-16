@@ -1,6 +1,8 @@
 #!make
 SHELL:=/bin/bash
 
+RUST_VERSION := $(shell grep 'channel' rust-toolchain.toml | sed 's/.*"\(.*\)"/\1/')
+
 # pp - pretty print function
 yellow := $(shell tput setaf 3)
 normal := $(shell tput sgr0)
@@ -30,7 +32,6 @@ withenv:
 # export CPPFLAGS=-I/opt/homebrew/opt/openssl@1.1/include
 dev.init: install
 	$(call pp,install git hooks...)
-	cargo install cargo-watch
 	cargo test
 
 ## dev.kafka_init: 🥁 Init kafka topic
@@ -97,6 +98,22 @@ lint:
 test.unit:
 	$(call pp,rust unit tests...)
 	cargo test
+
+## integration: 🧪 Start deps, migrate, run Chronos, publish test message, verify metrics
+integration: build
+	$(call pp,running integration test...)
+	@bash scripts/integration.sh
+
+## integration.down: 🛑 Stop docker services started by make integration
+integration.down:
+	$(call pp,stopping integration services...)
+	docker compose stop postgres kafka jaeger-all-in-one otel-collector 2>/dev/null || true
+	docker compose rm -f postgres kafka jaeger-all-in-one otel-collector 2>/dev/null || true
+
+## metrics.check: 🔍 Verify /metrics endpoint responds (requires running app)
+metrics.check:
+	$(call pp,check metrics endpoint...)
+	curl -sf http://localhost:9090/metrics | head -20
 
 ## test.unit.coverage: 🧪 Runs rust unit tests with coverage 'cobertura' and 'junit' reports
 test.unit.coverage:

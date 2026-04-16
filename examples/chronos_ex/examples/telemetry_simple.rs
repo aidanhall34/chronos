@@ -1,8 +1,7 @@
 use opentelemetry::trace::TracerProvider as _;
-use opentelemetry_otlp::ExportConfig;
+
 use opentelemetry_sdk::{runtime::Tokio, trace::TracerProvider};
 use tracing::{info_span, instrument};
-use tracing_subscriber::prelude::*;
 
 use tokio::time::Duration;
 

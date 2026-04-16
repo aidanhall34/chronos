@@ -1,0 +1,84 @@
+# syntax=docker/dockerfile:1
+#
+# Dockerfile.chronos-slim — scratch image for minimal production deployments.
+#
+# Key differences from Dockerfile.chronos ("fat" / glibc image):
+#   - Uses Alpine + musl to produce a fully static binary (zero runtime OS deps)
+#   - Unit tests are executed during the build stage; the image build fails if
+#     any test fails
+#   - The final stage is FROM scratch — no OS, shell, or package manager
+#
+# To use this image in docker-compose, change the chronos service to:
+#   build:
+#     context: .
+#     dockerfile: Dockerfile.chronos-slim
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build stage
+# Alpine's musl toolchain is used throughout. rdkafka compiles librdkafka from
+# source (cmake). The SASL feature requires Cyrus SASL, which Alpine packages
+# include as static libs so the final binary has no shared-library dependencies.
+# ─────────────────────────────────────────────────────────────────────────────
+FROM rust:1.94-alpine AS builder
+
+RUN apk add --no-cache \
+    musl-dev \
+    cmake \
+    make \
+    g++ \
+    cyrus-sasl-dev \
+    openssl-dev \
+    openssl-libs-static \
+    pkgconfig \
+    perl
+
+WORKDIR /build
+COPY ./ .
+
+# ── Run unit tests ─────────────────────────────────────────────────────────
+# Library unit tests run without external services (no Kafka or Postgres).
+# Building the test binary also verifies that the release code compiles cleanly
+# under musl. The image build is aborted here if any test fails.
+RUN PKG_CONFIG_ALL_STATIC=1 \
+    RUSTFLAGS="-C target-feature=+crt-static" \
+    cargo test --lib -p chronos_bin \
+        --target x86_64-unknown-linux-musl
+
+# ── Build static release binary ─────────────────────────────────────────────
+# PKG_CONFIG_ALL_STATIC=1  → pkg-config prefers static (.a) variants of all
+#                             C libraries (sasl2, openssl, …)
+# +crt-static               → embed the musl C runtime; no libc.so at runtime
+#
+# The release compile is fast here because the test stage above already built
+# all library crates under the same flags and target.
+RUN PKG_CONFIG_ALL_STATIC=1 \
+    RUSTFLAGS="-C target-feature=+crt-static" \
+    cargo build --release -p chronos_bin \
+        --target x86_64-unknown-linux-musl
+
+# Minimal passwd/group entries for the non-root user in the scratch image
+RUN printf 'chronos:x:1000:1000::/nonexistent:/sbin/nologin\n' > /tmp/passwd && \
+    printf 'chronos:x:1000:\n' > /tmp/group
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Runtime stage — FROM scratch
+# The binary is the entire filesystem contents (plus certs and user files).
+# ─────────────────────────────────────────────────────────────────────────────
+FROM scratch
+
+# TLS root certificates required for:
+#   - OTLP trace exporters (HTTPS)
+#   - Kafka with TLS listeners
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# User and group files so the container runs as non-root (uid 1000)
+COPY --from=builder /tmp/passwd /etc/passwd
+COPY --from=builder /tmp/group  /etc/group
+
+# The statically compiled binary — the only executable in this image
+COPY --from=builder \
+    /build/target/x86_64-unknown-linux-musl/release/chronos \
+    /chronos
+
+USER 1000:1000
+ENTRYPOINT ["/chronos"]

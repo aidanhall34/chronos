@@ -25,7 +25,7 @@ impl KafkaProducer {
         Self { producer, topic }
     }
     #[instrument(skip_all, fields(topic = %self.topic))]
-    pub(crate) async fn kafka_publish(&self, message: String, headers: Option<HashMap<String, String>>, key: String) -> Result<String, KafkaAdapterError> {
+    pub async fn kafka_publish(&self, message: String, headers: Option<HashMap<String, String>>, key: String) -> Result<String, KafkaAdapterError> {
         // Only because never expecting wrong headers to reach here
         let unwrap_header = &headers.unwrap_or_default();
 

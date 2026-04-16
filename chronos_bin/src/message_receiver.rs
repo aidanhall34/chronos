@@ -1,18 +1,21 @@
 use chrono::{DateTime, Utc};
+use rdkafka::message::BorrowedMessage;
+use rdkafka::Message;
 use serde_json::json;
+use std::{collections::HashMap, str::FromStr, sync::Arc};
 use tracing::instrument;
 
 use crate::kafka::consumer::KafkaConsumer;
 use crate::kafka::producer::KafkaProducer;
+use crate::metrics::ChronosMetrics;
 use crate::postgres::pg::{Pg, TableInsertRow};
 use crate::utils::util::{get_message_key, get_payload_utf8, required_headers, CHRONOS_ID, DEADLINE};
-use rdkafka::message::BorrowedMessage;
-use std::{collections::HashMap, str::FromStr, sync::Arc};
 
 pub struct MessageReceiver {
     pub(crate) consumer: Arc<KafkaConsumer>,
     pub(crate) producer: Arc<KafkaProducer>,
     pub(crate) data_store: Arc<Pg>,
+    pub(crate) metrics: Arc<ChronosMetrics>,
 }
 
 impl MessageReceiver {
@@ -81,19 +84,46 @@ impl MessageReceiver {
 
     #[tracing::instrument(name = "receiver_handle_message", skip_all, fields(correlationId, error))]
     pub async fn handle_message(&self, message: &BorrowedMessage<'_>) {
+        // msg_wait_time: record how long the message waited in the Kafka input queue.
+        // Uses the Kafka-assigned message timestamp; guards against clock skew with max(0).
+        if let Some(kafka_ts_ms) = message.timestamp().to_millis() {
+            let wait_secs = (Utc::now().timestamp_millis() - kafka_ts_ms).max(0) as f64 / 1000.0;
+            self.metrics.msg_wait_time.observe(wait_secs);
+        }
+
+        let timer = std::time::Instant::now();
+        let mut destination = "unknown";
+        let mut status = "pass";
+
         let new_message = &message;
         if let Some(reqd_headers) = required_headers(new_message) {
             tracing::Span::current().record("correlationId", &reqd_headers[CHRONOS_ID]);
             if let Ok(message_deadline) = DateTime::<Utc>::from_str(&reqd_headers[DEADLINE]) {
                 if message_deadline <= Utc::now() {
+                    destination = "kafka";
                     if let Some(err) = self.prepare_and_publish(new_message, reqd_headers).await {
+                        status = "fail";
                         log::error!("{}", err);
                         tracing::Span::current().record("error", &err);
                     }
-                } else if let Some(err_string) = self.insert_into_db(new_message, reqd_headers, message_deadline).await {
-                    log::error!("{}", err_string);
-                    tracing::Span::current().record("error", &err_string);
+                } else {
+                    destination = "postgres";
+                    if let Some(err_string) = self.insert_into_db(new_message, reqd_headers, message_deadline).await {
+                        status = "fail";
+                        log::error!("{}", err_string);
+                        tracing::Span::current().record("error", &err_string);
+                    }
                 }
+            }
+        }
+
+        // msg_consume_latency: only record when destination was determined (valid message headers).
+        if destination != "unknown" {
+            let elapsed = timer.elapsed().as_secs_f64();
+            if let Ok(obs) = self.metrics.msg_consume_latency.get_metric_with_label_values(&[destination, status]) {
+                obs.observe(elapsed);
+            } else {
+                log::error!("metrics: failed to observe msg_consume_latency");
             }
         }
     }
@@ -110,9 +140,26 @@ impl MessageReceiver {
                     log::error!("error while consuming message {:?}", e);
                 }
             }
-            // if let Ok(message) = &self.consumer.kafka_consume_message().await {
-            //     self.handle_message(message).await;
-            // }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_wait_time_calculation_non_negative() {
+        let kafka_ts_ms: i64 = 1_700_000_000_000;
+        let now_ms: i64 = kafka_ts_ms + 5_000;
+        let wait_secs = (now_ms - kafka_ts_ms).max(0) as f64 / 1000.0;
+        assert!((wait_secs - 5.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn test_wait_time_calculation_clock_skew() {
+        // Simulates a future Kafka timestamp (clock skew) — should floor to 0.0
+        let kafka_ts_ms: i64 = 9_999_999_999_999;
+        let now_ms: i64 = 1_700_000_000_000;
+        let wait_secs = (now_ms - kafka_ts_ms).max(0) as f64 / 1000.0;
+        assert_eq!(wait_secs, 0.0);
     }
 }

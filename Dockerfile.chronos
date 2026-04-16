@@ -1,4 +1,4 @@
-FROM rust:1.75.0-bookworm AS BUILD
+FROM rust:1.94-bookworm AS BUILD
 # Install software
 RUN update-ca-certificates && apt-get update && apt-get install -y libsasl2-dev
 # Create appuser

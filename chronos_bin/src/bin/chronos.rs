@@ -1,6 +1,7 @@
 use chronos_bin::kafka::config::KafkaConfig;
 use chronos_bin::kafka::consumer::KafkaConsumer;
 use chronos_bin::kafka::producer::KafkaProducer;
+use chronos_bin::metrics::ChronosMetrics;
 use chronos_bin::postgres::config::PgConfig;
 use chronos_bin::postgres::pg::Pg;
 use chronos_bin::runner::Runner;
@@ -40,11 +41,14 @@ async fn main() {
         },
     };
 
+    let metrics = Arc::new(ChronosMetrics::new().expect("Failed to initialize metrics registry"));
+
     info!("starting chronos establish connections");
     let r = Runner {
         data_store: Arc::new(data_store),
         producer: Arc::new(kafka_producer),
         consumer: Arc::new(kafka_consumer),
+        metrics,
     };
 
     debug!("debug logs starting chronos");

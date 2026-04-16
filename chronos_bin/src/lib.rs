@@ -2,6 +2,7 @@
 pub mod core;
 mod message_processor;
 mod message_receiver;
+pub mod metrics;
 mod monitor;
 
 pub mod runner;

@@ -64,6 +64,10 @@ opentelemetry-jaeger.workspace = true
 # opentelemetry-jaeger.workspace = true
 opentelemetry-otlp.workspace = true
 
+# metrics
+prometheus.workspace = true
+axum.workspace = true
+
 [dev-dependencies]
 serial_test.workspace = true
 
