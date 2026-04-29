@@ -68,7 +68,7 @@ At this time Chronos supports Http protocol based connectivity to the Otel colle
 Use the Grafana LGTM compose overlay with the main Docker Compose file to run Grafana, Loki, Tempo, Prometheus, Pyroscope, and the OpenTelemetry Collector in one container:
 
 ```sh
-docker compose -f docker-compose.yml -f dev/docker-compose-lgtm.yaml up -d
+make lgtm.up
 ```
 
 The overlay mounts local override files for Prometheus, the OpenTelemetry Collector, and Grafana dashboard provisioning. Chronos exposes its Prometheus metrics endpoint with `OTEL_EXPORTER_PROMETHEUS_HOST` and `OTEL_EXPORTER_PROMETHEUS_PORT`; when run from `docker-compose.yml` the endpoint is `chronos:9091`.
@@ -83,7 +83,6 @@ make lgtm.validate
 Two images are published for each [RELEASE]( `https://github.com/kindredgroup/chronos/pkgs/container/chronos`)
 - migrations image 
 - chornos image 
-
 
 
 

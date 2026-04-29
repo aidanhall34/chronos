@@ -139,6 +139,17 @@ lgtm.validate:
 		--entrypoint /otel-lgtm/otelcol-contrib/otelcol-contrib \
 		$(LGTM_IMAGE) validate --config=file:/otel-lgtm/otelcol-config.yaml --feature-gates=service.profilesSupport
 
+## lgtm.up: 📈 Start standalone Grafana LGTM stack
+lgtm.up:
+	$(call pp,start standalone LGTM stack...)
+	docker compose -f docker-compose.yml -f dev/docker-compose-lgtm.yaml up -d lgtm
+
+## lgtm.down: 🛑 Stop standalone Grafana LGTM stack
+lgtm.down:
+	$(call pp,stop standalone LGTM stack...)
+	docker compose -f docker-compose.yml -f dev/docker-compose-lgtm.yaml stop lgtm 2>/dev/null || true
+	docker compose -f docker-compose.yml -f dev/docker-compose-lgtm.yaml rm -f lgtm 2>/dev/null || true
+
 ## test.unit.coverage: 🧪 Runs rust unit tests with coverage 'cobertura' and 'junit' reports
 test.unit.coverage:
 	$(call pp,rust unit tests...)
