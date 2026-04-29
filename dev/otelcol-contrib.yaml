@@ -15,6 +15,12 @@ receivers:
           scrape_interval: 1s
           static_configs:
             - targets: ["127.0.0.1:8888"]
+  file_log/lgtm:
+    include:
+      - /data/lgtm/logs/*.jsonl
+    include_file_name: true
+    include_file_path: true
+    start_at: beginning
 
 extensions:
   health_check:
@@ -65,7 +71,7 @@ service:
       processors: [batch]
       exporters: [otlp_http/metrics]
     logs:
-      receivers: [otlp]
+      receivers: [otlp, file_log/lgtm]
       processors: [batch]
       exporters: [otlp_http/logs]
     profiles:

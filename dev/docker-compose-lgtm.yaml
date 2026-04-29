@@ -14,6 +14,15 @@ services:
   lgtm:
     image: grafana/otel-lgtm:0.24.1
     container_name: lgtm
+    environment:
+      ENABLE_LOGS_ALL: "true"
+      GF_LOG_CONSOLE_FORMAT: json
+      GF_LOG_FORMAT: json
+      GF_LOG_MODE: console
+      LGTM_LOG_DIR: /data/lgtm/logs
+      LOKI_EXTRA_ARGS: -log.format=json
+      PROMETHEUS_EXTRA_ARGS: --log.format=json
+      PYROSCOPE_EXTRA_ARGS: -log.format=json
     ports:
       - "3000:3000"   # Grafana
       - "3100:3100"   # Loki
@@ -22,9 +31,17 @@ services:
       - "4317:4317"   # OTLP gRPC
       - "4318:4318"   # OTLP HTTP
       - "9090:9090"   # Prometheus
+    healthcheck:
+      test: ["CMD-SHELL", "sh /otel-lgtm/chronos-healthcheck.sh"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
     volumes:
       - ./dev/prometheus.yaml:/otel-lgtm/prometheus.yaml:ro
       - ./dev/otelcol-contrib.yaml:/otel-lgtm/otelcol-config.yaml:ro
+      - ./dev/lgtm-healthcheck.sh:/otel-lgtm/chronos-healthcheck.sh:ro
+      - ./dev/lgtm-logging.sh:/otel-lgtm/logging.sh:ro
       - ./dev/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/chronos.yaml:ro
       - ./dev/dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards/chronos:ro
     networks:
