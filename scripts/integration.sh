@@ -8,7 +8,7 @@ set -euo pipefail
 # ─── configuration ────────────────────────────────────────────────────────────
 KAFKA_EXT_PORT="${KAFKA_EXT_PORT:-9094}"
 PG_PORT="${PG_PORT:-5432}"
-METRICS_PORT="${METRICS_PORT:-9090}"
+METRICS_PORT="${OTEL_EXPORTER_PROMETHEUS_PORT:-${METRICS_PORT:-9090}}"
 CHRONOS_PID_FILE="/tmp/chronos_integration.pid"
 CHRONOS_LOG="/tmp/chronos_integration.log"
 MAX_WAIT=120   # seconds to wait for each readiness check
@@ -91,7 +91,8 @@ PG_PASSWORD=admin \
 PG_DATABASE=chronos_db \
 PG_POOL_SIZE=10 \
 RUST_LOG=warn \
-METRICS_PORT="${METRICS_PORT}" \
+OTEL_EXPORTER_PROMETHEUS_HOST=0.0.0.0 \
+OTEL_EXPORTER_PROMETHEUS_PORT="${METRICS_PORT}" \
 MONITOR_DB_POLL=5 \
 PROCESSOR_DB_POLL=5 \
 TIMING_ADVANCE=0 \

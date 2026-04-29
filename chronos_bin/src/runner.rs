@@ -31,13 +31,15 @@ impl Runner {
         let receiver_consumer = self.consumer.clone();
         let receiver_metrics = Arc::clone(&self.metrics);
 
-        let metrics_port = ChronosConfig::from_env().metrics_port;
+        let chronos_config = ChronosConfig::from_env();
+        let metrics_host = chronos_config.metrics_host;
+        let metrics_port = chronos_config.metrics_port;
         let metrics_for_server = Arc::clone(&self.metrics);
 
         // Spawn metrics server as an independent background task.
         // A failure here is logged but does not stop the processing tasks.
         tokio::task::spawn(async move {
-            run_metrics_server(metrics_for_server, metrics_port).await;
+            run_metrics_server(metrics_for_server, metrics_host, metrics_port).await;
         });
 
         let monitor_handler = tokio::task::spawn(async {

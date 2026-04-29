@@ -16,12 +16,12 @@ async fn metrics_handler(State(metrics): State<Arc<ChronosMetrics>>) -> impl Int
     }
 }
 
-pub async fn run_metrics_server(metrics: Arc<ChronosMetrics>, port: u16) {
+pub async fn run_metrics_server(metrics: Arc<ChronosMetrics>, host: String, port: u16) {
     let app = Router::new().route("/metrics", get(metrics_handler)).with_state(metrics);
 
-    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
+    let addr = format!("{}:{}", host, port);
     log::info!("Metrics server listening on {}", addr);
 
-    let listener = tokio::net::TcpListener::bind(addr).await.expect("Failed to bind metrics server port");
+    let listener = tokio::net::TcpListener::bind(&addr).await.expect("Failed to bind metrics server port");
     axum::serve(listener, app).await.expect("Metrics server failed");
 }

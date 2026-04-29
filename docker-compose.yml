@@ -76,7 +76,7 @@ services:
       context: .
       dockerfile: Dockerfile.chronos
     ports:
-      - "9090:9090"   # Prometheus /metrics endpoint
+      - "9091:9091"   # Prometheus /metrics endpoint
     environment:
       KAFKA_HOST: kafka
       KAFKA_PORT: "9092"
@@ -93,7 +93,8 @@ services:
       PG_DATABASE: chronos_db
       PG_POOL_SIZE: "10"
       RUST_LOG: info
-      METRICS_PORT: "9090"
+      OTEL_EXPORTER_PROMETHEUS_HOST: "0.0.0.0"
+      OTEL_EXPORTER_PROMETHEUS_PORT: "9091"
       MONITOR_DB_POLL: "5"
       PROCESSOR_DB_POLL: "5"
       TIMING_ADVANCE: "0"

@@ -1,0 +1,31 @@
+services:
+  chronos:
+    environment:
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://lgtm:4318/v1/traces
+
+  jaeger-all-in-one:
+    profiles:
+      - legacy-otel
+
+  otel-collector:
+    profiles:
+      - legacy-otel
+
+  lgtm:
+    image: grafana/otel-lgtm:0.24.1
+    container_name: lgtm
+    ports:
+      - "3000:3000"   # Grafana
+      - "3100:3100"   # Loki
+      - "3200:3200"   # Tempo
+      - "4040:4040"   # Pyroscope
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "9090:9090"   # Prometheus
+    volumes:
+      - ./dev/prometheus.yaml:/otel-lgtm/prometheus.yaml:ro
+      - ./dev/otelcol-contrib.yaml:/otel-lgtm/otelcol-config.yaml:ro
+      - ./dev/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/chronos.yaml:ro
+      - ./dev/dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards/chronos:ro
+    networks:
+      - chronos

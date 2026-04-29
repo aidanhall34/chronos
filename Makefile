@@ -3,6 +3,7 @@ SHELL:=/bin/bash
 
 RUST_VERSION := $(shell grep 'channel' rust-toolchain.toml | sed 's/.*"\(.*\)"/\1/')
 EXPORTER ?= prom
+LGTM_IMAGE ?= grafana/otel-lgtm:0.24.1
 
 # pp - pretty print function
 yellow := $(shell tput setaf 3)
@@ -114,7 +115,7 @@ integration.down:
 ## metrics.check: 🔍 Verify /metrics endpoint responds (requires running app)
 metrics.check:
 	$(call pp,check metrics endpoint...)
-	curl -sf http://localhost:9090/metrics | head -20
+	curl -sf "http://localhost:$${OTEL_EXPORTER_PROMETHEUS_PORT:-$${METRICS_PORT:-9090}}/metrics" | head -20
 
 ## metrics.mock: 🔍 Run Prometheus/OTLP metrics mock example with EXPORTER=prom|otlp
 metrics.mock:
@@ -124,6 +125,19 @@ metrics.mock:
 		otlp) OTEL_METRICS_EXPORTER=otlp OTEL_EXPORTER_OTLP_PROTOCOL=grpc cargo run --package prom_otlp_mock_runner --bin prom_otlp_mock ;; \
 		*) echo "unsupported EXPORTER=$(EXPORTER); use EXPORTER=prom or EXPORTER=otlp" >&2; exit 2 ;; \
 	esac
+
+## lgtm.validate: 🔍 Validate LGTM Prometheus and OpenTelemetry Collector configs
+lgtm.validate:
+	$(call pp,validate LGTM Prometheus config with $(LGTM_IMAGE)...)
+	docker run --rm \
+		-v "$(PWD)/dev/prometheus.yaml:/otel-lgtm/prometheus.yaml:ro" \
+		--entrypoint /otel-lgtm/prometheus/promtool \
+		$(LGTM_IMAGE) check config /otel-lgtm/prometheus.yaml
+	$(call pp,validate LGTM OpenTelemetry Collector config with $(LGTM_IMAGE)...)
+	docker run --rm \
+		-v "$(PWD)/dev/otelcol-contrib.yaml:/otel-lgtm/otelcol-config.yaml:ro" \
+		--entrypoint /otel-lgtm/otelcol-contrib/otelcol-contrib \
+		$(LGTM_IMAGE) validate --config=file:/otel-lgtm/otelcol-config.yaml --feature-gates=service.profilesSupport
 
 ## test.unit.coverage: 🧪 Runs rust unit tests with coverage 'cobertura' and 'junit' reports
 test.unit.coverage:

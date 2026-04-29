@@ -51,6 +51,8 @@ These values are set to fine tune performance Chrono in need, refer to [Chronos]
 | TIMING_ADVANCE|0 sec
 | FAIL_DETECT_INTERVAL|10 sec
 | HEALTHCHECK_FILE|healthcheck/chronos_healthcheck
+| OTEL_EXPORTER_PROMETHEUS_HOST|0.0.0.0
+| OTEL_EXPORTER_PROMETHEUS_PORT|9090
 
 
 ## Observability
@@ -62,13 +64,25 @@ At this time Chronos supports Http protocol based connectivity to the Otel colle
 |   OTEL_EXPORTER_OTLP_TRACES_ENDPOINT|"http://localhost:4318/v1/traces"
 |   OTEL_EXPORTER_OTLP_PROTOCOL|"http/json"
 
+### Local Grafana LGTM stack
+Use the Grafana LGTM compose overlay with the main Docker Compose file to run Grafana, Loki, Tempo, Prometheus, Pyroscope, and the OpenTelemetry Collector in one container:
+
+```sh
+docker compose -f docker-compose.yml -f dev/docker-compose-lgtm.yaml up -d
+```
+
+The overlay mounts local override files for Prometheus, the OpenTelemetry Collector, and Grafana dashboard provisioning. Chronos exposes its Prometheus metrics endpoint with `OTEL_EXPORTER_PROMETHEUS_HOST` and `OTEL_EXPORTER_PROMETHEUS_PORT`; when run from `docker-compose.yml` the endpoint is `chronos:9091`.
+
+Validate the LGTM configuration files with:
+
+```sh
+make lgtm.validate
+```
+
 ## Chronos Images 
 Two images are published for each [RELEASE]( `https://github.com/kindredgroup/chronos/pkgs/container/chronos`)
 - migrations image 
 - chornos image 
-
-
-
 
 
 
