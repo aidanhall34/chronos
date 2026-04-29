@@ -49,6 +49,11 @@ exporters:
     verbosity: detailed
 
 service:
+  telemetry:
+    logs:
+      encoding: json
+    metrics:
+      level: detailed
   extensions: [health_check]
   pipelines:
     traces:
