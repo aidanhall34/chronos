@@ -302,7 +302,8 @@ fn prometheus_label_values<'a>(id: MetricId, labels: &'a [(&'static str, String)
         .collect()
 }
 
-fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let metrics = ChronosMetrics::from_env()?;
 
     metrics.message_consumed("postgres", "pass");

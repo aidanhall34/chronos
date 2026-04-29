@@ -3,10 +3,6 @@ name = "chronos_ex"
 version = "0.0.2"
 edition = "2021"
 
-[[example]]
-name = "prom_otlp_mock"
-path = "../prom_otlp_mock.rs"
-
 [dependencies]
 env_logger = "0.9.0"
 dotenv = "0.15.0"
@@ -29,7 +25,6 @@ opentelemetry_api.workspace = true
 opentelemetry_sdk.workspace = true
 opentelemetry-otlp.workspace = true
 opentelemetry-jaeger.workspace = true
-prometheus.workspace = true
 # opentelemetry-stdout.workspace = true
 
 # opentelemetry = "0.20"

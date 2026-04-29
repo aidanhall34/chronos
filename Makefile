@@ -2,6 +2,7 @@
 SHELL:=/bin/bash
 
 RUST_VERSION := $(shell grep 'channel' rust-toolchain.toml | sed 's/.*"\(.*\)"/\1/')
+EXPORTER ?= prom
 
 # pp - pretty print function
 yellow := $(shell tput setaf 3)
@@ -114,6 +115,15 @@ integration.down:
 metrics.check:
 	$(call pp,check metrics endpoint...)
 	curl -sf http://localhost:9090/metrics | head -20
+
+## metrics.mock: 🔍 Run Prometheus/OTLP metrics mock example with EXPORTER=prom|otlp
+metrics.mock:
+	$(call pp,run metrics mock example with exporter $(EXPORTER)...)
+	@case "$(EXPORTER)" in \
+		prom|prometheus) OTEL_METRICS_EXPORTER=prometheus cargo run --package prom_otlp_mock_runner --bin prom_otlp_mock ;; \
+		otlp) OTEL_METRICS_EXPORTER=otlp OTEL_EXPORTER_OTLP_PROTOCOL=grpc cargo run --package prom_otlp_mock_runner --bin prom_otlp_mock ;; \
+		*) echo "unsupported EXPORTER=$(EXPORTER); use EXPORTER=prom or EXPORTER=otlp" >&2; exit 2 ;; \
+	esac
 
 ## test.unit.coverage: 🧪 Runs rust unit tests with coverage 'cobertura' and 'junit' reports
 test.unit.coverage:

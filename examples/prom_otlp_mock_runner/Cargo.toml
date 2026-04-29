@@ -1,0 +1,15 @@
+[package]
+name = "prom_otlp_mock_runner"
+version = "0.0.0"
+edition = "2021"
+
+[[bin]]
+name = "prom_otlp_mock"
+path = "../prom_otlp_mock.rs"
+
+[dependencies]
+opentelemetry.workspace = true
+opentelemetry_sdk.workspace = true
+opentelemetry-otlp.workspace = true
+prometheus.workspace = true
+tokio.workspace = true
