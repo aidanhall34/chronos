@@ -28,6 +28,11 @@ extensions:
     path: "/ready"
 
 processors:
+  transform/lgtm_logs:
+    log_statements:
+      - context: log
+        statements:
+          - set(resource.attributes["service.name"], ExtractPatterns(attributes["log.file.name"], "^(?P<service_name>.*)\\.jsonl$")["service_name"]) where resource.attributes["service.name"] == nil
   batch:
 
 exporters:
@@ -72,7 +77,7 @@ service:
       exporters: [otlp_http/metrics]
     logs:
       receivers: [otlp, file_log/lgtm]
-      processors: [batch]
+      processors: [transform/lgtm_logs, batch]
       exporters: [otlp_http/logs]
     profiles:
       receivers: [otlp]

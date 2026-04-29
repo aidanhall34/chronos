@@ -23,6 +23,8 @@ use opentelemetry_otlp::WithExportConfig;
 use prometheus::{histogram_opts, opts, CounterVec as PromCounterVec, HistogramVec as PromHistogramVec, Registry};
 
 const OTEL_METRICS_EXPORTER: &str = "OTEL_METRICS_EXPORTER";
+const OTEL_EXPORTER_OTLP_ENDPOINT: &str = "OTEL_EXPORTER_OTLP_ENDPOINT";
+const OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: &str = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT";
 const OTEL_EXPORTER_OTLP_PROTOCOL: &str = "OTEL_EXPORTER_OTLP_PROTOCOL";
 const OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: &str = "OTEL_EXPORTER_OTLP_METRICS_PROTOCOL";
 
@@ -219,7 +221,10 @@ struct OtlpMetricsBackend {
 
 impl OtlpMetricsBackend {
     fn new() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
-        let exporter = opentelemetry_otlp::new_exporter().tonic().with_env();
+        let endpoint = env::var(OTEL_EXPORTER_OTLP_METRICS_ENDPOINT)
+            .or_else(|_| env::var(OTEL_EXPORTER_OTLP_ENDPOINT))
+            .unwrap_or_else(|_| "http://127.0.0.1:4317".to_string());
+        let exporter = opentelemetry_otlp::new_exporter().tonic().with_env().with_endpoint(endpoint);
         let provider = opentelemetry_otlp::new_pipeline()
             .metrics(opentelemetry::runtime::Tokio)
             .with_exporter(exporter)
@@ -276,7 +281,12 @@ impl MetricsBackend for OtlpMetricsBackend {
     }
 
     fn shutdown(&self) {
-        let _ = self.provider.shutdown();
+        if let Err(err) = self.provider.force_flush(&opentelemetry::Context::current()) {
+            eprintln!("failed to flush OTLP metrics: {err}");
+        }
+        if let Err(err) = self.provider.shutdown() {
+            eprintln!("failed to shut down OTLP metrics provider: {err}");
+        }
     }
 }
 
@@ -311,6 +321,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     if let Some(text) = metrics.prometheus_text() {
         println!("{text}");
+    }
+
+    if MetricsExporter::from_env()? == MetricsExporter::Otlp {
+        tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     }
 
     metrics.shutdown();

@@ -122,7 +122,7 @@ metrics.mock:
 	$(call pp,run metrics mock example with exporter $(EXPORTER)...)
 	@case "$(EXPORTER)" in \
 		prom|prometheus) OTEL_METRICS_EXPORTER=prometheus cargo run --package prom_otlp_mock_runner --bin prom_otlp_mock ;; \
-		otlp) OTEL_METRICS_EXPORTER=otlp OTEL_EXPORTER_OTLP_PROTOCOL=grpc cargo run --package prom_otlp_mock_runner --bin prom_otlp_mock ;; \
+		otlp) OTEL_SERVICE_NAME=chronos-metrics-mock OTEL_RESOURCE_ATTRIBUTES=service.instance.id=chronos-metrics-mock-local OTEL_METRICS_EXPORTER=otlp OTEL_EXPORTER_OTLP_PROTOCOL=grpc OTEL_EXPORTER_OTLP_METRICS_ENDPOINT=http://127.0.0.1:4317 OTEL_METRIC_EXPORT_INTERVAL=1000 cargo run --package prom_otlp_mock_runner --bin prom_otlp_mock ;; \
 		*) echo "unsupported EXPORTER=$(EXPORTER); use EXPORTER=prom or EXPORTER=otlp" >&2; exit 2 ;; \
 	esac
 
