@@ -33,7 +33,11 @@ function run_with_logging() {
 	envvar=$1
 	shift
 
-	safe_name=$(printf '%s' "${name}" | tr '[:upper:] ' '[:lower:]_' | tr -cd '[:alnum:]_.-')
+	case "${name}" in
+	"OpenTelemetry Collector"*) service_name=otelcol ;;
+	*) service_name=${name%% *} ;;
+	esac
+	safe_name=$(printf '%s' "${service_name}" | tr '[:upper:]' '[:lower:]' | tr -cd '[:alnum:]_.-')
 	log_dir="${LGTM_LOG_DIR:-/data/lgtm/logs}"
 	log_file="${log_dir}/${safe_name}.jsonl"
 
