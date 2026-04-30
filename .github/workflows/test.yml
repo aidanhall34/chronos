@@ -1,4 +1,4 @@
-name: pre-commit
+name: test
 
 on:
   workflow_call:
@@ -8,11 +8,11 @@ permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.workflow }}-pre-commit-${{ github.ref }}
+  group: ${{ github.workflow }}-test-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  pre-commit:
+  test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -22,10 +22,9 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: 1.94
-          components: rustfmt,clippy
 
       - name: Install system dependencies
         run: scripts/ubuntu-setup.sh
 
-      - name: Run pre-commit checks
-        run: sh scripts/pre-commit-checks.sh
+      - name: Run unit tests
+        run: cargo test

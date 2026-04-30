@@ -1,0 +1,37 @@
+name: build-binary
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-build-binary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-binary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build static binary image stage
+        run: docker build --target builder -f Dockerfile.chronos-slim -t chronos-static-builder:${{ github.sha }} .
+
+      - name: Extract static binary
+        run: |
+          mkdir -p dist
+          container_id="$(docker create chronos-static-builder:${{ github.sha }})"
+          trap 'docker rm -f "${container_id}" >/dev/null 2>&1 || true' EXIT
+          docker cp "${container_id}:/build/target/x86_64-unknown-linux-musl/release/chronos" dist/chronos-linux-x86_64-musl
+          chmod 0755 dist/chronos-linux-x86_64-musl
+
+      - name: Upload binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos-linux-x86_64-musl
+          path: dist/chronos-linux-x86_64-musl
+          if-no-files-found: error

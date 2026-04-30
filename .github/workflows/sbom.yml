@@ -1,0 +1,72 @@
+name: sbom
+
+on:
+  workflow_call:
+    inputs:
+      target-type:
+        description: Use "container" for an image SBOM or "release" for a filesystem/release artifact SBOM.
+        required: true
+        type: string
+      target-ref:
+        description: Container image reference or release artifact path to scan.
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      target-type:
+        description: Use "container" for an image SBOM or "release" for a filesystem/release artifact SBOM.
+        required: true
+        type: choice
+        options:
+          - container
+          - release
+      target-ref:
+        description: Container image reference or release artifact path to scan.
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-sbom-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sbom:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate inputs
+        run: |
+          case "${{ inputs.target-type }}" in
+            container|release) ;;
+            *) echo "target-type must be container or release" >&2; exit 2 ;;
+          esac
+
+      - name: Generate container SBOM
+        if: inputs.target-type == 'container'
+        uses: aquasecurity/trivy-action@0.32.0
+        with:
+          scan-type: image
+          scan-ref: ${{ inputs.target-ref }}
+          format: cyclonedx
+          output: chronos-sbom.cdx.json
+
+      - name: Generate release SBOM
+        if: inputs.target-type == 'release'
+        uses: aquasecurity/trivy-action@0.32.0
+        with:
+          scan-type: fs
+          scan-ref: ${{ inputs.target-ref }}
+          format: cyclonedx
+          output: chronos-sbom.cdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chronos-sbom-${{ inputs.target-type }}
+          path: chronos-sbom.cdx.json
+          if-no-files-found: error

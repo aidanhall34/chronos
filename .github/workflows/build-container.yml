@@ -1,0 +1,25 @@
+name: build-container
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-build-container-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-container:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build regular container
+        run: docker build -f Dockerfile.chronos -t chronos:${{ github.sha }} .
+
+      - name: Build scratch container
+        run: docker build -f Dockerfile.chronos-slim -t chronos-scratch:${{ github.sha }} .

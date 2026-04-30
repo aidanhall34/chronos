@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+permissions:
+  contents: read
+  security-events: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pre-commit:
+    uses: ./.github/workflows/pre-commit.yml
+
+  test:
+    uses: ./.github/workflows/test.yml
+
+  scan:
+    uses: ./.github/workflows/scan.yml
+
+  build-binary:
+    uses: ./.github/workflows/build-binary.yml
+
+  build-container:
+    uses: ./.github/workflows/build-container.yml
+
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    needs:
+      - pre-commit
+      - test
+      - scan
+      - build-binary
+      - build-container
+    if: ${{ always() }}
+    steps:
+      - name: Require all CI jobs to pass
+        run: |
+          for result in \
+            "${{ needs.pre-commit.result }}" \
+            "${{ needs.test.result }}" \
+            "${{ needs.scan.result }}" \
+            "${{ needs.build-binary.result }}" \
+            "${{ needs.build-container.result }}"
+          do
+            if [ "${result}" != "success" ]; then
+              echo "One or more CI jobs did not succeed." >&2
+              exit 1
+            fi
+          done
