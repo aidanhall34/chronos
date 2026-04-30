@@ -1,22 +1,20 @@
 use crate::metrics::ChronosMetrics;
 use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::get, Router};
-use prometheus::{Encoder, TextEncoder};
 use std::sync::Arc;
 
 async fn metrics_handler(State(metrics): State<Arc<ChronosMetrics>>) -> impl IntoResponse {
-    let encoder = TextEncoder::new();
-    let metric_families = metrics.registry.gather();
-    let mut buffer = Vec::new();
-    match encoder.encode(&metric_families, &mut buffer) {
-        Ok(_) => (StatusCode::OK, [("content-type", "text/plain; version=0.0.4; charset=utf-8")], buffer).into_response(),
-        Err(e) => {
-            log::error!("Failed to encode metrics: {}", e);
-            StatusCode::INTERNAL_SERVER_ERROR.into_response()
-        }
+    match metrics.render_prometheus() {
+        Some(body) => (StatusCode::OK, [("content-type", "text/plain; version=0.0.4; charset=utf-8")], body).into_response(),
+        None => StatusCode::NOT_FOUND.into_response(),
     }
 }
 
 pub async fn run_metrics_server(metrics: Arc<ChronosMetrics>, host: String, port: u16) {
+    if !metrics.is_prometheus() {
+        log::info!("Prometheus metrics server disabled because OTEL_METRICS_EXPORTER is not prometheus");
+        return;
+    }
+
     let app = Router::new().route("/metrics", get(metrics_handler)).with_state(metrics);
 
     let addr = format!("{}:{}", host, port);

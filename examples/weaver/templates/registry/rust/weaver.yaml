@@ -12,9 +12,10 @@ templates:
               brief,
               instrument,
               unit,
-              attributes: (.attributes // [] | map(.name // .id // .ref)),
-              prometheus_labels: (.attributes // [] | map((.name // .id // .ref) | gsub("\\."; "_"))),
-              buckets: .annotations.code_generation.buckets
+              attributes: (.annotations.code_generation.label_names // (.attributes // [] | map(.name // .id // .ref))),
+              prometheus_labels: (.annotations.code_generation.prometheus_label_names // (.attributes // [] | map((.name // .id // .ref) | gsub("\\."; "_")))),
+              buckets: .annotations.code_generation.buckets,
+              prewarm_label_values: (.annotations.code_generation.prewarm_label_values // [])
             }))
       }
     application_mode: single

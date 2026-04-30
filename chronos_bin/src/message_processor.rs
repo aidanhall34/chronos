@@ -68,7 +68,7 @@ impl MessageProcessor {
                     // msg_jitter: difference between actual publish time and client-requested deadline.
                     // Floored at 0 to guard against clock skew producing negative jitter.
                     let jitter_secs = (Utc::now() - deadline).num_milliseconds().max(0) as f64 / 1000.0;
-                    self.metrics.msg_jitter.observe(jitter_secs);
+                    self.metrics.observe_jitter(jitter_secs);
                     Ok(id)
                 } else {
                     Err("error occurred while publishing".to_string())
@@ -167,11 +167,7 @@ impl MessageProcessor {
             let timer = std::time::Instant::now();
             let (returned, status) = self.processor_message_ready(node_id).await;
             let elapsed = timer.elapsed().as_secs_f64();
-            if let Ok(obs) = self.metrics.msg_process_latency.get_metric_with_label_values(&[&returned.to_string(), status]) {
-                obs.observe(elapsed);
-            } else {
-                log::error!("metrics: failed to observe msg_process_latency");
-            }
+            self.metrics.observe_process_latency(elapsed, returned, status);
 
             delay_controller.sleep().await;
         }
@@ -194,11 +190,11 @@ mod tests {
     fn test_jitter_below_500ms_within_sla() {
         let metrics = ChronosMetrics::new().unwrap();
         // A 300ms jitter is within the 500ms SLA — must land in the <=0.5s bucket
-        metrics.msg_jitter.observe(0.3);
-        let families = metrics.registry.gather();
-        let fam = families.iter().find(|f| f.get_name() == "msg_jitter").unwrap();
-        let hist = fam.get_metric()[0].get_histogram();
-        let bucket_500 = hist.get_bucket().iter().find(|b| (b.get_upper_bound() - 0.5).abs() < 1e-9).unwrap();
-        assert_eq!(bucket_500.get_cumulative_count(), 1, "300ms jitter must be counted in the <=500ms bucket");
+        metrics.observe_jitter(0.3);
+        let output = metrics.render_prometheus().unwrap();
+        assert!(
+            output.contains("chronos_msg_jitter_bucket{le=\"0.5\"} 1"),
+            "300ms jitter must be counted in the <=500ms bucket"
+        );
     }
 }

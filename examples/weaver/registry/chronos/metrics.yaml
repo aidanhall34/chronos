@@ -17,73 +17,85 @@ groups:
         examples: ["chronos-metrics-mock-live-check"]
         requirement_level: required
 
-  - id: metric_attributes.chronos.message_store
+  - id: metric_attributes.chronos.consume_result
     type: attribute_group
     stability: development
-    brief: Common attributes used by Chronos message store metrics.
+    brief: Attributes for Chronos input message handling outcomes.
     attributes:
-      - id: messaging.system
+      - id: destination
         type: string
         stability: development
-        brief: The messaging system as identified by the client instrumentation.
-        examples: ["kafka"]
+        brief: Downstream selected by message_receiver::handle_message.
+        examples: ["kafka", "postgres"]
         requirement_level: required
-      - id: messaging.operation.name
+      - id: chronos.consume.status
         type: string
         stability: development
-        brief: The system-specific name of the messaging operation.
-        examples: ["receive", "process"]
-        requirement_level: required
-      - id: messaging.destination.name
-        type: string
-        stability: development
-        brief: The message destination name.
-        examples: ["chronos-input", "chronos-output"]
+        brief: Whether the consume path completed successfully.
+        examples: ["pass", "fail"]
         requirement_level: required
 
-  - id: metric.chronos.message.consumed
-    type: metric
-    metric_name: messaging.client.consumed.messages
+  - id: metric_attributes.chronos.process_result
+    type: attribute_group
     stability: development
-    brief: Total number of Chronos input messages consumed.
-    instrument: counter
-    unit: "{message}"
-    extends: metric_attributes.chronos.message_store
-    annotations:
-      code_generation:
-        rust_name: msg_consumed
-        metric_value_type: int
-        prometheus_name: messaging_client_consumed_messages_total
+    brief: Attributes for Chronos ready-message processor loop outcomes.
+    attributes:
+      - id: returned
+        type: string
+        stability: development
+        brief: Whether the processor loop returned early because no rows were ready.
+        examples: ["true", "false"]
+        requirement_level: required
+      - id: chronos.process.status
+        type: string
+        stability: development
+        brief: Whether the processor loop completed successfully.
+        examples: ["pass", "fail"]
+        requirement_level: required
 
   - id: metric.chronos.message.consume.duration
     type: metric
-    metric_name: messaging.client.operation.duration
+    metric_name: chronos.message.consume.duration
     stability: development
     brief: Duration of handle_message() in message_receiver.
     instrument: histogram
     unit: s
-    extends: metric_attributes.chronos.message_store
+    extends: metric_attributes.chronos.consume_result
     annotations:
       code_generation:
         rust_name: msg_consume_latency
         metric_value_type: double
-        prometheus_name: messaging_client_operation_duration_seconds
+        prometheus_name: msg_consume_latency
+        label_names: [destination, status]
+        prometheus_label_names: [destination, status]
         buckets: [0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024, 2.048]
+        prewarm_label_values:
+          - [kafka, pass]
+          - [kafka, fail]
+          - [postgres, pass]
+          - [postgres, fail]
 
   - id: metric.chronos.message.process.duration
     type: metric
-    metric_name: messaging.process.duration
+    metric_name: chronos.message.process.duration
     stability: development
     brief: Duration of processor_message_ready() loop in message_processor.
     instrument: histogram
     unit: s
-    extends: metric_attributes.chronos.message_store
+    extends: metric_attributes.chronos.process_result
     annotations:
       code_generation:
         rust_name: msg_process_latency
         metric_value_type: double
-        prometheus_name: messaging_process_duration_seconds
+        prometheus_name: msg_process_latency
+        label_names: [returned, status]
+        prometheus_label_names: [returned, status]
         buckets: [0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024, 2.048]
+        prewarm_label_values:
+          - ["true", pass]
+          - ["true", fail]
+          - ["false", pass]
+          - ["false", fail]
 
   - id: metric.chronos.message.wait.duration
     type: metric
@@ -96,7 +108,7 @@ groups:
       code_generation:
         rust_name: msg_wait_time
         metric_value_type: double
-        prometheus_name: chronos_message_wait_duration_seconds
+        prometheus_name: msg_wait_time
         buckets: [0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 51.2, 102.4, 204.8, 409.6, 819.2]
 
   - id: metric.chronos.message.jitter
@@ -110,7 +122,7 @@ groups:
       code_generation:
         rust_name: msg_jitter
         metric_value_type: double
-        prometheus_name: chronos_message_jitter_seconds
+        prometheus_name: msg_jitter
         buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
 
   - id: metric.chronos.message.reset
@@ -124,4 +136,4 @@ groups:
       code_generation:
         rust_name: msg_reset
         metric_value_type: int
-        prometheus_name: chronos_messages_reset_total
+        prometheus_name: msg_reset

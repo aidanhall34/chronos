@@ -88,7 +88,7 @@ impl MessageReceiver {
         // Uses the Kafka-assigned message timestamp; guards against clock skew with max(0).
         if let Some(kafka_ts_ms) = message.timestamp().to_millis() {
             let wait_secs = (Utc::now().timestamp_millis() - kafka_ts_ms).max(0) as f64 / 1000.0;
-            self.metrics.msg_wait_time.observe(wait_secs);
+            self.metrics.observe_wait_time(wait_secs);
         }
 
         let timer = std::time::Instant::now();
@@ -120,11 +120,7 @@ impl MessageReceiver {
         // msg_consume_latency: only record when destination was determined (valid message headers).
         if destination != "unknown" {
             let elapsed = timer.elapsed().as_secs_f64();
-            if let Ok(obs) = self.metrics.msg_consume_latency.get_metric_with_label_values(&[destination, status]) {
-                obs.observe(elapsed);
-            } else {
-                log::error!("metrics: failed to observe msg_consume_latency");
-            }
+            self.metrics.observe_consume_latency(elapsed, destination, status);
         }
     }
 

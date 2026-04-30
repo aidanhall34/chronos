@@ -155,7 +155,7 @@ echo "════════════════════════�
 echo "  Chronos metrics  (http://localhost:${METRICS_PORT}/metrics)"
 echo "══════════════════════════════════════════════════════"
 curl -sf "http://localhost:${METRICS_PORT}/metrics" \
-    | grep -E "^(# HELP|# TYPE|msg_)" \
+    | grep -E "^(# HELP|# TYPE|chronos_msg_)" \
     | sort
 echo ""
 
@@ -163,11 +163,11 @@ echo ""
 log "Verifying metric families..."
 METRICS_OUTPUT="$(curl -sf "http://localhost:${METRICS_PORT}/metrics")"
 EXPECTED_METRICS=(
-    "msg_consume_latency"
-    "msg_process_latency"
-    "msg_wait_time"
-    "msg_jitter"
-    "msg_reset"
+    "chronos_msg_consume_latency"
+    "chronos_msg_process_latency"
+    "chronos_msg_wait_time"
+    "chronos_msg_jitter"
+    "chronos_msg_reset"
 )
 ALL_OK=true
 for metric in "${EXPECTED_METRICS[@]}"; do

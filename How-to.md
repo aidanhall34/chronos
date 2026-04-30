@@ -73,6 +73,10 @@ make lgtm.up
 
 The overlay mounts local override files for Prometheus, the OpenTelemetry Collector, and Grafana dashboard provisioning. Chronos exposes its Prometheus metrics endpoint with `OTEL_EXPORTER_PROMETHEUS_HOST` and `OTEL_EXPORTER_PROMETHEUS_PORT`; when run from `docker-compose.yml` the endpoint is `chronos:9091`.
 
+Chronos metrics are generated from the OpenTelemetry Weaver registry in `examples/weaver/registry/chronos/metrics.yaml` into `chronos_bin/src/metrics/generated`. `OTEL_METRICS_EXPORTER=prometheus` is the default and exposes `/metrics` with the `chronos_` Prometheus namespace, for example `chronos_msg_jitter`. `OTEL_METRICS_EXPORTER=otlp` records the same generated metric IDs through the OTLP gRPC metrics exporter.
+
+`make build` runs `make weaver.generate` before compiling, which refreshes the generated Rust definitions, Markdown metric docs, and resolved registry JSON schema.
+
 Validate the LGTM configuration files with:
 
 ```sh
@@ -83,7 +87,6 @@ make lgtm.validate
 Two images are published for each [RELEASE]( `https://github.com/kindredgroup/chronos/pkgs/container/chronos`)
 - migrations image 
 - chornos image 
-
 
 
 

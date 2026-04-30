@@ -14,6 +14,16 @@ pub enum MetricKind {
     Histogram,
 }
 
+impl MetricKind {
+    pub fn is_counter(self) -> bool {
+        matches!(self, Self::Counter)
+    }
+
+    pub fn is_histogram(self) -> bool {
+        matches!(self, Self::Histogram)
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct MetricDefinition {
     pub id: MetricId,
@@ -25,6 +35,7 @@ pub struct MetricDefinition {
     pub prometheus_label_names: &'static [&'static str],
     pub kind: MetricKind,
     pub buckets: Option<&'static [f64]>,
+    pub prewarm_label_values: &'static [&'static [&'static str]],
 }
 
 pub const METRIC_DEFINITIONS: &[MetricDefinition] = &[
@@ -41,6 +52,7 @@ pub const METRIC_DEFINITIONS: &[MetricDefinition] = &[
         buckets: {% if metric.buckets %}{% if metric.buckets | length > 10 %}Some(&[
             {{ metric.buckets | join(", ") }},
         ]){% else %}Some(&[{{ metric.buckets | join(", ") }}]){% endif %}{% else %}None{% endif %},
+        prewarm_label_values: &[{% for values in metric.prewarm_label_values %}&[{% for value in values %}"{{ value }}"{% if not loop.last %}, {% endif %}{% endfor %}]{% if not loop.last %}, {% endif %}{% endfor %}],
     },
 {%- endfor %}
 ];

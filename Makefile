@@ -8,7 +8,7 @@ WEAVER_VERSION ?= 0.23.0
 WEAVER_IMAGE ?= otel/weaver:v$(WEAVER_VERSION)
 WEAVER_REGISTRY ?= examples/weaver/registry
 WEAVER_TEMPLATES ?= examples/weaver/templates
-WEAVER_GENERATED_DIR ?= examples/weaver/generated
+WEAVER_GENERATED_DIR ?= chronos_bin/src/metrics/generated
 WEAVER_LIVE_CHECK_PORT ?= 4319
 WEAVER_LIVE_CHECK_ADMIN_PORT ?= 4320
 WEAVER_LIVE_CHECK_OUT ?= /tmp/chronos-weaver-live-check
@@ -80,7 +80,7 @@ install:
 	cargo fetch
 
 ## build: 🧪 Compiles rust
-build:
+build: weaver.generate
 	$(call pp,build rust...)
 	cargo build
 

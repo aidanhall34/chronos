@@ -10,7 +10,7 @@ templates:
               brief,
               instrument,
               unit,
-              attributes: (.attributes // [] | map(.name // .id // .ref))
+              attributes: (.annotations.code_generation.label_names // (.attributes // [] | map(.name // .id // .ref)))
             }))
       }
     application_mode: single

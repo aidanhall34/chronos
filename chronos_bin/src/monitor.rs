@@ -27,7 +27,7 @@ impl FailureDetector {
             match &self.data_store.reset_to_init_db(fetched_rows).await {
                 Ok(reset_ids) => {
                     // msg_reset: count the number of messages reset by the monitor task.
-                    self.metrics.msg_reset.inc_by(reset_ids.len() as f64);
+                    self.metrics.messages_reset(reset_ids.len() as u64);
                     log::debug!("reset_to_init_db success for {:?}", fetched_rows)
                 }
                 Err(e) => {
