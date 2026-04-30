@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
 #
-# Dockerfile.chronos-slim — scratch image for minimal production deployments.
+# Dockerfile.chronos-slim — Alpine image for minimal production deployments.
 #
 # Key differences from Dockerfile.chronos ("fat" / glibc image):
-#   - Uses Alpine + musl to produce a fully static binary (zero runtime OS deps)
+#   - Uses Alpine + musl to keep runtime dependencies small
 #   - Unit tests are executed during the build stage; the image build fails if
 #     any test fails
-#   - The final stage is FROM scratch — no OS, shell, or package manager
+#   - The final stage keeps only the small runtime packages needed by rdkafka
 #
 # To use this image in docker-compose, change the chronos service to:
 #   build:
@@ -16,19 +16,21 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # Build stage
 # Alpine's musl toolchain is used throughout. rdkafka compiles librdkafka from
-# source (cmake). The SASL feature requires Cyrus SASL, which Alpine packages
-# include as static libs so the final binary has no shared-library dependencies.
+# source (cmake). The SASL feature requires Cyrus SASL. Alpine's static SASL
+# archive pulls in GSSAPI, GDBM, and SQLite plugin symbols, so this image links
+# SASL dynamically and carries the small runtime libraries in the final stage.
+# librdkafka's configure script is run by rdkafka-sys and requires bash.
 # ─────────────────────────────────────────────────────────────────────────────
 FROM rust:1.94-alpine AS builder
 
 RUN apk add --no-cache \
+    bash \
     musl-dev \
     cmake \
     make \
     g++ \
     cyrus-sasl-dev \
     openssl-dev \
-    openssl-libs-static \
     pkgconfig \
     perl
 
@@ -39,45 +41,38 @@ COPY ./ .
 # Library unit tests run without external services (no Kafka or Postgres).
 # Building the test binary also verifies that the release code compiles cleanly
 # under musl. The image build is aborted here if any test fails.
-RUN PKG_CONFIG_ALL_STATIC=1 \
-    RUSTFLAGS="-C target-feature=+crt-static" \
-    cargo test --lib -p chronos_bin \
-        --target x86_64-unknown-linux-musl
+RUN RUSTFLAGS="-C target-feature=-crt-static" \
+    cargo test --lib -p chronos_bin
 
-# ── Build static release binary ─────────────────────────────────────────────
-# PKG_CONFIG_ALL_STATIC=1  → pkg-config prefers static (.a) variants of all
-#                             C libraries (sasl2, openssl, …)
-# +crt-static               → embed the musl C runtime; no libc.so at runtime
-#
+# ── Build release binary ───────────────────────────────────────────────────
 # The release compile is fast here because the test stage above already built
-# all library crates under the same flags and target.
-RUN PKG_CONFIG_ALL_STATIC=1 \
-    RUSTFLAGS="-C target-feature=+crt-static" \
-    cargo build --release -p chronos_bin \
-        --target x86_64-unknown-linux-musl
+# all library crates under the same target.
+#
+RUN RUSTFLAGS="-C target-feature=-crt-static" \
+    cargo build --release -p chronos_bin
 
-# Minimal passwd/group entries for the non-root user in the scratch image
+# Minimal passwd/group entries for the non-root user in the runtime image
 RUN printf 'chronos:x:1000:1000::/nonexistent:/sbin/nologin\n' > /tmp/passwd && \
     printf 'chronos:x:1000:\n' > /tmp/group
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Runtime stage — FROM scratch
-# The binary is the entire filesystem contents (plus certs and user files).
+# Runtime stage.
 # ─────────────────────────────────────────────────────────────────────────────
-FROM scratch
+FROM alpine:3.23
 
-# TLS root certificates required for:
-#   - OTLP trace exporters (HTTPS)
-#   - Kafka with TLS listeners
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+RUN apk add --no-cache \
+    ca-certificates \
+    cyrus-sasl \
+    cyrus-sasl-scram \
+    libgcc \
+    openssl
 
 # User and group files so the container runs as non-root (uid 1000)
 COPY --from=builder /tmp/passwd /etc/passwd
 COPY --from=builder /tmp/group  /etc/group
 
-# The statically compiled binary — the only executable in this image
 COPY --from=builder \
-    /build/target/x86_64-unknown-linux-musl/release/chronos \
+    /build/target/release/chronos \
     /chronos
 
 USER 1000:1000

@@ -18,20 +18,20 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Build static binary image stage
-        run: docker build --target builder -f Dockerfile.chronos-slim -t chronos-static-builder:${{ github.sha }} .
+      - name: Build binary image stage
+        run: docker build --target builder -f Dockerfile.chronos-slim -t chronos-binary-builder:${{ github.sha }} .
 
-      - name: Extract static binary
+      - name: Extract binary
         run: |
           mkdir -p dist
-          container_id="$(docker create chronos-static-builder:${{ github.sha }})"
+          container_id="$(docker create chronos-binary-builder:${{ github.sha }})"
           trap 'docker rm -f "${container_id}" >/dev/null 2>&1 || true' EXIT
-          docker cp "${container_id}:/build/target/x86_64-unknown-linux-musl/release/chronos" dist/chronos-linux-x86_64-musl
-          chmod 0755 dist/chronos-linux-x86_64-musl
+          docker cp "${container_id}:/build/target/release/chronos" dist/chronos-linux-x86_64-alpine
+          chmod 0755 dist/chronos-linux-x86_64-alpine
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@v4
         with:
-          name: chronos-linux-x86_64-musl
-          path: dist/chronos-linux-x86_64-musl
+          name: chronos-linux-x86_64-alpine
+          path: dist/chronos-linux-x86_64-alpine
           if-no-files-found: error

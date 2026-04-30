@@ -1,0 +1,12 @@
+target/
+.git/
+.github/
+.codex/
+
+.env
+healthcheck/
+
+.DS_Store
+*.iml
+.idea/
+.vscode/
