@@ -1,0 +1,107 @@
+# Chronos metrics specification.
+#
+# This file is intentionally not wired into the runtime yet. It captures the
+# current Prometheus metric surface from registry.rs while carrying the
+# OpenTelemetry-style names needed by a future generated registry.
+#
+# Sources:
+# - https://github.com/kindredgroup/chronos/issues/12
+# - examples/prom_otlp_mock.rs
+
+schema_version: 1
+service: chronos
+stability: development
+source_issue: https://github.com/kindredgroup/chronos/issues/12
+notes:
+  - >-
+    Metrics operations must stay outside the critical message path. Failures to
+    record metrics must not block consuming, storing, publishing, or deleting messages.
+  - >-
+    Chronos exposes Prometheus pull metrics today; OTLP names are included so the
+    same definitions can generate an OTLP backend later.
+  - >-
+    The message jitter histogram keeps an explicit 0.5 second bucket for the
+    500ms scheduling SLA discussed in issue #12.
+
+label_sets:
+  consume_result:
+    labels:
+      - name: destination
+        otel_name: chronos.destination
+        description: Downstream selected by message_receiver::handle_message.
+        values: [kafka, postgres]
+      - name: status
+        otel_name: chronos.status
+        description: Whether the consume path completed successfully.
+        values: [pass, fail]
+    prewarm:
+      - [kafka, pass]
+      - [kafka, fail]
+      - [postgres, pass]
+      - [postgres, fail]
+  process_result:
+    labels:
+      - name: returned
+        otel_name: chronos.processor.returned
+        description: Whether the processor loop returned early because no rows were ready.
+        values: ["true", "false"]
+      - name: status
+        otel_name: chronos.status
+        description: Whether the processor loop completed successfully.
+        values: [pass, fail]
+    prewarm:
+      - ["true", pass]
+      - ["true", fail]
+      - ["false", pass]
+      - ["false", fail]
+
+metrics:
+  - id: msg_consume_latency
+    kind: histogram
+    prometheus_name: msg_consume_latency
+    otel_name: chronos.message.consume.duration
+    description: Duration of message_receiver::MessageReceiver::handle_message().
+    unit: s
+    labels: consume_result
+    buckets: [0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024, 2.048]
+    issue_12_signal: latency
+
+  - id: msg_process_latency
+    kind: histogram
+    prometheus_name: msg_process_latency
+    otel_name: chronos.message.process.duration
+    description: Duration of message_processor::MessageProcessor::processor_message_ready().
+    unit: s
+    labels: process_result
+    buckets: [0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024, 2.048]
+    issue_12_signal: latency
+
+  - id: msg_wait_time
+    kind: histogram
+    prometheus_name: msg_wait_time
+    otel_name: chronos.message.wait.duration
+    description: Time a message spent in the Kafka input queue before processing.
+    unit: s
+    labels: []
+    buckets: [0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 51.2, 102.4, 204.8, 409.6, 819.2]
+    issue_12_signal: latency
+
+  - id: msg_jitter
+    kind: histogram
+    prometheus_name: msg_jitter
+    otel_name: chronos.message.jitter
+    description: Difference between actual publish time and client-requested deadline.
+    unit: s
+    labels: []
+    buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+    issue_12_signal: latency
+    sla_bucket_seconds: 0.5
+
+  - id: msg_reset
+    kind: counter
+    prometheus_name: msg_reset
+    otel_name: chronos.message.reset
+    description: Number of records reset by postgres::pg::Pg::reset_to_init_db() in the monitor task.
+    unit: "{message}"
+    labels: []
+    issue_12_signal: errors
