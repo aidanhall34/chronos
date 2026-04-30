@@ -56,7 +56,7 @@ pub fn get_env_vars_with_prefix(prefix: &str) -> Option<HashMap<String, String>>
 /// ```
 ///
 /// - When the `key` and value return `type` is passed, the environment variable is
-/// read for the key and the value is parsed into the `type` passed as argument.
+///   read for the key and the value is parsed into the `type` passed as argument.
 ///
 /// ## Example
 /// ```ignore
@@ -65,7 +65,7 @@ pub fn get_env_vars_with_prefix(prefix: &str) -> Option<HashMap<String, String>>
 /// ```
 ///
 /// - Special scenario to convert the string value to Vector.
-/// When the `key` and value return `type` is passed as `Vec<type>`
+///   When the `key` and value return `type` is passed as `Vec<type>`
 ///     - the environment variable is read for the key.
 ///     - the string value returned is split on `,` to create a Vec.
 ///     - each value of the vec is parsed into the `type` passed as argument.

@@ -12,10 +12,14 @@ WEAVER_GENERATED_DIR ?= examples/weaver/generated
 WEAVER_LIVE_CHECK_PORT ?= 4319
 WEAVER_LIVE_CHECK_ADMIN_PORT ?= 4320
 WEAVER_LIVE_CHECK_OUT ?= /tmp/chronos-weaver-live-check
+GITHUB_CONFIG ?= .github/config.json
+ACT_WORKFLOW ?= .github/workflows/pre-commit.yml
+ACT_EVENT ?= push
+ACT_JOB ?= pre-commit
 
 # pp - pretty print function
-yellow := $(shell tput setaf 3)
-normal := $(shell tput sgr0)
+yellow := $(shell tput setaf 3 2>/dev/null || true)
+normal := $(shell tput sgr0 2>/dev/null || true)
 define pp
 	@printf '$(yellow)$(1)$(normal)\n'
 endef
@@ -100,14 +104,14 @@ run.release:
 ## lint: 🧹 Checks for lint failures on rust
 lint:
 	$(call pp,lint rust...)
-	cargo check
+	RUSTFLAGS="-D warnings" cargo check
 	cargo fmt -- --check
-	cargo clippy --all-targets
+	RUSTFLAGS="-D warnings" cargo clippy --all-targets -- -D warnings
 
 ## test.unit: 🧪 Runs unit tests
 test.unit:
 	$(call pp,rust unit tests...)
-	cargo test
+	RUSTFLAGS="-D warnings" cargo test
 
 ## integration: 🧪 Start deps, migrate, run Chronos, publish test message, verify metrics
 integration: build
@@ -138,6 +142,16 @@ metrics.mock:
 weaver.check:
 	$(call pp,check Weaver registry with $(WEAVER_IMAGE)...)
 	docker run --rm -v "$(PWD):/work" -w /work $(WEAVER_IMAGE) registry check -r $(WEAVER_REGISTRY)
+
+## repo.config.apply: 🔐 Apply GitHub repository and branch settings from .github/config.json
+repo.config.apply:
+	$(call pp,apply GitHub repository config from $(GITHUB_CONFIG)...)
+	scripts/apply-github-config.sh "$(GITHUB_CONFIG)"
+
+## workflow.pre-commit.act: 🎬 Run the pre-commit GitHub Actions workflow locally with act
+workflow.pre-commit.act:
+	$(call pp,run $(ACT_WORKFLOW) locally with act...)
+	act "$(ACT_EVENT)" -W "$(ACT_WORKFLOW)" -j "$(ACT_JOB)"
 
 ## weaver.generate.rust: 🧵 Generate Rust metric definitions with Weaver
 weaver.generate.rust:

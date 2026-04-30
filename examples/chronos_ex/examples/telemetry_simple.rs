@@ -121,9 +121,9 @@ async fn main() {
 
     let handler = tokio::task::spawn(async {
         println!("this is spawning");
-        // let runner = Runner {};
-        // runner.run();
-        // runner.run_sub_db().await;
+        let runner = Runner {};
+        runner.run();
+        runner.run_sub_db().await;
         let mut count = 0;
         loop {
             count += 1;

@@ -28,7 +28,6 @@ deadpool-postgres = "0.10"
 refinery = { version = "0.8.7", features = ["tokio-postgres"] }
 
 
-clippy = "0.0.302"
 rand = "0.8.5"
 serial_test = "2.0.0"
 

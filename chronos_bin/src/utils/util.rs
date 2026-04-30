@@ -9,14 +9,10 @@ pub fn required_headers(message: &BorrowedMessage) -> Option<HashMap<String, Str
     if let Some(headers) = message.headers() {
         if headers_check(headers) {
             let reqd_headers = headers.iter().fold(HashMap::<String, String>::new(), |mut acc, header| {
-                if let Ok(key) = header.key.parse() {
-                    if let Some(value) = header.value {
-                        let value: String = String::from_utf8_lossy(value).into_owned();
-                        acc.insert(key, value);
-                        acc
-                    } else {
-                        acc
-                    }
+                if let Some(value) = header.value {
+                    let value: String = String::from_utf8_lossy(value).into_owned();
+                    acc.insert(header.key.to_string(), value);
+                    acc
                 } else {
                     acc
                 }
@@ -48,7 +44,7 @@ pub fn headers_check(headers: &BorrowedHeaders) -> bool {
     outcome == 2
 }
 
-pub fn get_payload_utf8<'a>(message: &'a BorrowedMessage) -> Option<&'a [u8]> {
+pub fn get_payload_utf8<'a>(message: &'a BorrowedMessage<'_>) -> Option<&'a [u8]> {
     message.payload()
 }
 

@@ -65,7 +65,7 @@ impl KafkaConsumer {
         };
     }
 
-    pub(crate) async fn kafka_consume_message(&self) -> Result<BorrowedMessage, KafkaAdapterError> {
+    pub(crate) async fn kafka_consume_message(&self) -> Result<BorrowedMessage<'_>, KafkaAdapterError> {
         self.consumer.recv().await.map_err(KafkaAdapterError::ReceiveMessage)
     }
 }

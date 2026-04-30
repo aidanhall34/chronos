@@ -63,7 +63,7 @@ struct PgAccess {
 }
 
 impl PgAccess {
-    pub async fn build_txn(&mut self) -> Result<PgTxn, PgError> {
+    pub async fn build_txn(&mut self) -> Result<PgTxn<'_>, PgError> {
         let txn = self
             .client
             .build_transaction()
@@ -191,7 +191,7 @@ impl Pg {
     }
 
     #[tracing::instrument(skip_all)]
-    pub(crate) async fn delete_fired(&self, ids: &Vec<String>) -> Result<u64, String> {
+    pub(crate) async fn delete_fired(&self, ids: &[String]) -> Result<u64, String> {
         // let query_execute_instant = Instant::now();
         let pg_client = match self.get_client().await {
             Ok(client) => client,

@@ -39,7 +39,6 @@ anyhow = "1.0.42"
 chrono = "0.4.23"
 
 #config
-clippy.workspace = true
 clap = { version="4.1.4", features = ["derive"] }
 dotenvy = "0.15"
 uuid = { version="1.3.0", features = [

@@ -126,7 +126,7 @@ impl ChronosMetrics {
     }
 
     fn record_cycle(&self, cycle: u64) {
-        let destination = if cycle % 2 == 0 { "chronos-input" } else { "chronos-retry" };
+        let destination = if cycle.is_multiple_of(2) { "chronos-input" } else { "chronos-retry" };
         let latency_seconds = 0.005 + ((cycle % 20) as f64 * 0.0025);
 
         self.message_consumed(destination);

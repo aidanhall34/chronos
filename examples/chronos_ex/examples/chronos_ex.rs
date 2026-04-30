@@ -55,10 +55,7 @@ fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
         log::error!("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT not set");
 
         // trace error
-        Err(TraceError::Other(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT not set",
-        ))))
+        Err(TraceError::Other(Box::new(std::io::Error::other("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT not set"))))
     }
 }
 
