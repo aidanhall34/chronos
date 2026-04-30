@@ -1,0 +1,117 @@
+groups:
+  - id: metric_attributes.chronos.message_store
+    type: attribute_group
+    stability: development
+    brief: Common attributes used by Chronos message store metrics.
+    attributes:
+      - id: chronos.message.destination
+        type: string
+        stability: development
+        brief: Destination used by Chronos while handling a consumed message.
+        examples: ["kafka", "postgres"]
+        requirement_level: required
+      - id: chronos.operation.status
+        type: string
+        stability: development
+        brief: Low-cardinality operation result.
+        examples: ["pass", "fail"]
+        requirement_level: required
+
+  - id: metric_attributes.chronos.processor
+    type: attribute_group
+    stability: development
+    brief: Common attributes used by Chronos processor loop metrics.
+    attributes:
+      - id: chronos.processor.returned
+        type: boolean
+        stability: development
+        brief: Whether the processor loop returned before processing any rows.
+        examples: [true, false]
+        requirement_level: required
+      - ref: chronos.operation.status
+        requirement_level: required
+
+  - id: metric.chronos.message.consumed
+    type: metric
+    metric_name: chronos.message.consumed
+    stability: development
+    brief: Total number of Chronos input messages consumed.
+    instrument: counter
+    unit: "{message}"
+    extends: metric_attributes.chronos.message_store
+    annotations:
+      code_generation:
+        rust_name: msg_consumed
+        metric_value_type: int
+        prometheus_name: chronos_messages_consumed_total
+
+  - id: metric.chronos.message.consume.duration
+    type: metric
+    metric_name: chronos.message.consume.duration
+    stability: development
+    brief: Duration of handle_message() in message_receiver.
+    instrument: histogram
+    unit: s
+    extends: metric_attributes.chronos.message_store
+    annotations:
+      code_generation:
+        rust_name: msg_consume_latency
+        metric_value_type: double
+        prometheus_name: chronos_message_consume_duration_seconds
+        buckets: [0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024, 2.048]
+
+  - id: metric.chronos.message.process.duration
+    type: metric
+    metric_name: chronos.message.process.duration
+    stability: development
+    brief: Duration of processor_message_ready() loop in message_processor.
+    instrument: histogram
+    unit: s
+    extends: metric_attributes.chronos.processor
+    annotations:
+      code_generation:
+        rust_name: msg_process_latency
+        metric_value_type: double
+        prometheus_name: chronos_message_process_duration_seconds
+        buckets: [0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024, 2.048]
+
+  - id: metric.chronos.message.wait.duration
+    type: metric
+    metric_name: chronos.message.wait.duration
+    stability: development
+    brief: Time a message spent in the Kafka input queue before processing.
+    instrument: histogram
+    unit: s
+    annotations:
+      code_generation:
+        rust_name: msg_wait_time
+        metric_value_type: double
+        prometheus_name: chronos_message_wait_duration_seconds
+        buckets: [0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 51.2, 102.4, 204.8, 409.6, 819.2]
+
+  - id: metric.chronos.message.jitter
+    type: metric
+    metric_name: chronos.message.jitter
+    stability: development
+    brief: Difference between actual publish time and client-requested deadline.
+    instrument: histogram
+    unit: s
+    annotations:
+      code_generation:
+        rust_name: msg_jitter
+        metric_value_type: double
+        prometheus_name: chronos_message_jitter_seconds
+        buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+
+  - id: metric.chronos.message.reset
+    type: metric
+    metric_name: chronos.message.reset
+    stability: development
+    brief: Number of records reset by reset_to_init_db() in the monitor task.
+    instrument: counter
+    unit: "{message}"
+    annotations:
+      code_generation:
+        rust_name: msg_reset
+        metric_value_type: int
+        prometheus_name: chronos_messages_reset_total

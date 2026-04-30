@@ -1,0 +1,20 @@
+templates:
+  - pattern: registry.rs.j2
+    filter: >
+      {
+        metrics: (.groups
+          | map(select(.type == "metric"))
+          | map({
+              id,
+              metric_name,
+              rust_name: .annotations.code_generation.rust_name,
+              prometheus_name: .annotations.code_generation.prometheus_name,
+              brief,
+              instrument,
+              unit,
+              attributes: (.attributes // [] | map(.name // .id // .ref)),
+              buckets: .annotations.code_generation.buckets
+            }))
+      }
+    application_mode: single
+    file_name: chronos_metric_definitions.rs
