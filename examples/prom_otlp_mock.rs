@@ -15,6 +15,8 @@
 
 use std::collections::HashMap;
 use std::env;
+use std::sync::Arc;
+use std::time::Duration;
 
 use opentelemetry::global;
 use opentelemetry::metrics::{Counter as OtlpCounter, Histogram as OtlpHistogram, Unit};
@@ -27,6 +29,9 @@ const OTEL_EXPORTER_OTLP_ENDPOINT: &str = "OTEL_EXPORTER_OTLP_ENDPOINT";
 const OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: &str = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT";
 const OTEL_EXPORTER_OTLP_PROTOCOL: &str = "OTEL_EXPORTER_OTLP_PROTOCOL";
 const OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: &str = "OTEL_EXPORTER_OTLP_METRICS_PROTOCOL";
+const OTEL_METRIC_EXPORT_INTERVAL: &str = "OTEL_METRIC_EXPORT_INTERVAL";
+const OTEL_EXPORTER_PROMETHEUS_HOST: &str = "OTEL_EXPORTER_PROMETHEUS_HOST";
+const OTEL_EXPORTER_PROMETHEUS_PORT: &str = "OTEL_EXPORTER_PROMETHEUS_PORT";
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]
 enum MetricId {
@@ -43,28 +48,34 @@ enum MetricKind {
 #[derive(Clone, Copy, Debug)]
 struct MetricDefinition {
     id: MetricId,
-    name: &'static str,
+    otel_name: &'static str,
+    prometheus_name: &'static str,
     description: &'static str,
     unit: Option<&'static str>,
-    label_names: &'static [&'static str],
+    attribute_names: &'static [&'static str],
+    prometheus_label_names: &'static [&'static str],
     kind: MetricKind,
 }
 
 const METRIC_DEFINITIONS: &[MetricDefinition] = &[
     MetricDefinition {
         id: MetricId::MsgConsumed,
-        name: "chronos_messages_consumed_total",
+        otel_name: "messaging.client.consumed.messages",
+        prometheus_name: "messaging_client_consumed_messages",
         description: "Total number of Chronos input messages consumed",
-        unit: Some("1"),
-        label_names: &["destination", "status"],
+        unit: Some("{message}"),
+        attribute_names: &["messaging.system", "messaging.operation.name", "messaging.destination.name"],
+        prometheus_label_names: &["messaging_system", "messaging_operation_name", "messaging_destination_name"],
         kind: MetricKind::Counter,
     },
     MetricDefinition {
         id: MetricId::MsgConsumeLatency,
-        name: "chronos_message_consume_latency_seconds",
+        otel_name: "messaging.process.duration",
+        prometheus_name: "messaging_process_duration_seconds",
         description: "Time spent handling a consumed Chronos message",
         unit: Some("s"),
-        label_names: &["destination", "status"],
+        attribute_names: &["messaging.system", "messaging.operation.name", "messaging.destination.name"],
+        prometheus_label_names: &["messaging_system", "messaging_operation_name", "messaging_destination_name"],
         kind: MetricKind::Histogram,
     },
 ];
@@ -90,20 +101,36 @@ impl ChronosMetrics {
         Ok(Self { backend })
     }
 
-    fn message_consumed(&self, destination: &'static str, status: &'static str) {
+    fn message_consumed(&self, destination: &'static str) {
         self.backend.inc_counter(
             MetricId::MsgConsumed,
             1,
-            &[("destination", destination.to_string()), ("status", status.to_string())],
+            &[
+                ("messaging.system", "kafka".to_string()),
+                ("messaging.operation.name", "receive".to_string()),
+                ("messaging.destination.name", destination.to_string()),
+            ],
         );
     }
 
-    fn consume_latency(&self, seconds: f64, destination: &'static str, status: &'static str) {
+    fn consume_latency(&self, seconds: f64, destination: &'static str) {
         self.backend.observe_histogram(
             MetricId::MsgConsumeLatency,
             seconds,
-            &[("destination", destination.to_string()), ("status", status.to_string())],
+            &[
+                ("messaging.system", "kafka".to_string()),
+                ("messaging.operation.name", "process".to_string()),
+                ("messaging.destination.name", destination.to_string()),
+            ],
         );
+    }
+
+    fn record_cycle(&self, cycle: u64) {
+        let destination = if cycle % 2 == 0 { "chronos-input" } else { "chronos-retry" };
+        let latency_seconds = 0.005 + ((cycle % 20) as f64 * 0.0025);
+
+        self.message_consumed(destination);
+        self.consume_latency(latency_seconds, destination);
     }
 
     fn prometheus_text(&self) -> Option<String> {
@@ -113,6 +140,33 @@ impl ChronosMetrics {
     fn shutdown(&self) {
         self.backend.shutdown();
     }
+}
+
+struct MockRuntimeConfig {
+    interval: Duration,
+    prometheus_host: String,
+    prometheus_port: u16,
+}
+
+impl MockRuntimeConfig {
+    fn from_env() -> Result<Self, Box<dyn std::error::Error + Send + Sync>> {
+        Ok(Self {
+            interval: env_duration_ms(OTEL_METRIC_EXPORT_INTERVAL, 1_000)?,
+            prometheus_host: env::var(OTEL_EXPORTER_PROMETHEUS_HOST).unwrap_or_else(|_| "127.0.0.1".to_string()),
+            prometheus_port: env::var(OTEL_EXPORTER_PROMETHEUS_PORT)
+                .unwrap_or_else(|_| "9092".to_string())
+                .parse()
+                .map_err(|err| format!("invalid {OTEL_EXPORTER_PROMETHEUS_PORT}: {err}"))?,
+        })
+    }
+}
+
+fn env_duration_ms(name: &'static str, default_ms: u64) -> Result<Duration, Box<dyn std::error::Error + Send + Sync>> {
+    let millis = env::var(name)
+        .unwrap_or_else(|_| default_ms.to_string())
+        .parse()
+        .map_err(|err| format!("invalid {name}: {err}"))?;
+    Ok(Duration::from_millis(millis))
 }
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -162,12 +216,15 @@ impl PrometheusMetricsBackend {
         for definition in METRIC_DEFINITIONS {
             match definition.kind {
                 MetricKind::Counter => {
-                    let metric = PromCounterVec::new(opts!(definition.name, definition.description), definition.label_names)?;
+                    let metric = PromCounterVec::new(opts!(definition.prometheus_name, definition.description), definition.prometheus_label_names)?;
                     registry.register(Box::new(metric.clone()))?;
                     counters.insert(definition.id, metric);
                 }
                 MetricKind::Histogram => {
-                    let metric = PromHistogramVec::new(histogram_opts!(definition.name, definition.description), definition.label_names)?;
+                    let metric = PromHistogramVec::new(
+                        histogram_opts!(definition.prometheus_name, definition.description),
+                        definition.prometheus_label_names,
+                    )?;
                     registry.register(Box::new(metric.clone()))?;
                     histograms.insert(definition.id, metric);
                 }
@@ -239,14 +296,14 @@ impl OtlpMetricsBackend {
         for definition in METRIC_DEFINITIONS {
             match definition.kind {
                 MetricKind::Counter => {
-                    let mut builder = meter.u64_counter(definition.name).with_description(definition.description);
+                    let mut builder = meter.u64_counter(definition.otel_name).with_description(definition.description);
                     if let Some(unit) = definition.unit {
                         builder = builder.with_unit(Unit::new(unit));
                     }
                     counters.insert(definition.id, builder.init());
                 }
                 MetricKind::Histogram => {
-                    let mut builder = meter.f64_histogram(definition.name).with_description(definition.description);
+                    let mut builder = meter.f64_histogram(definition.otel_name).with_description(definition.description);
                     if let Some(unit) = definition.unit {
                         builder = builder.with_unit(Unit::new(unit));
                     }
@@ -300,7 +357,7 @@ fn prometheus_label_values<'a>(id: MetricId, labels: &'a [(&'static str, String)
     };
 
     definition
-        .label_names
+        .attribute_names
         .iter()
         .map(|name| {
             labels
@@ -312,21 +369,80 @@ fn prometheus_label_values<'a>(id: MetricId, labels: &'a [(&'static str, String)
         .collect()
 }
 
+async fn spawn_prometheus_server(
+    metrics: Arc<ChronosMetrics>,
+    host: String,
+    port: u16,
+) -> Result<tokio::task::JoinHandle<()>, Box<dyn std::error::Error + Send + Sync>> {
+    use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+    let listener = tokio::net::TcpListener::bind(format!("{host}:{port}")).await?;
+    eprintln!("Prometheus metrics mock listening on http://{host}:{port}/metrics");
+
+    Ok(tokio::spawn(async move {
+        loop {
+            let Ok((mut stream, _)) = listener.accept().await else {
+                continue;
+            };
+            let metrics = Arc::clone(&metrics);
+            tokio::spawn(async move {
+                let mut request = [0_u8; 1024];
+                let bytes_read = stream.read(&mut request).await.unwrap_or(0);
+                let request_line = String::from_utf8_lossy(&request[..bytes_read]);
+                let (status, body) = if request_line.starts_with("GET /metrics ") {
+                    ("200 OK", metrics.prometheus_text().unwrap_or_default())
+                } else {
+                    ("404 Not Found", "not found\n".to_string())
+                };
+                let response = format!(
+                    "HTTP/1.1 {status}\r\ncontent-type: text/plain; version=0.0.4; charset=utf-8\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                let _ = stream.write_all(response.as_bytes()).await;
+            });
+        }
+    }))
+}
+
+async fn run_workload(metrics: Arc<ChronosMetrics>, config: &MockRuntimeConfig) {
+    let mut cycle = 0_u64;
+    loop {
+        cycle += 1;
+        metrics.record_cycle(cycle);
+
+        tokio::time::sleep(config.interval).await;
+    }
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let metrics = ChronosMetrics::from_env()?;
+    let exporter = MetricsExporter::from_env()?;
+    let config = MockRuntimeConfig::from_env()?;
+    let metrics = Arc::new(ChronosMetrics::from_env()?);
 
-    metrics.message_consumed("postgres", "pass");
-    metrics.consume_latency(0.042, "postgres", "pass");
+    let prometheus_server = if exporter == MetricsExporter::Prometheus {
+        let metrics_for_server = Arc::clone(&metrics);
+        Some(spawn_prometheus_server(metrics_for_server, config.prometheus_host.clone(), config.prometheus_port).await?)
+    } else {
+        None
+    };
 
-    if let Some(text) = metrics.prometheus_text() {
-        println!("{text}");
+    eprintln!("Metrics mock running until interrupted");
+
+    tokio::select! {
+        _ = run_workload(Arc::clone(&metrics), &config) => {}
+        result = tokio::signal::ctrl_c() => {
+            result?;
+        }
     }
 
-    if MetricsExporter::from_env()? == MetricsExporter::Otlp {
+    if exporter == MetricsExporter::Otlp {
         tokio::time::sleep(std::time::Duration::from_secs(2)).await;
     }
 
     metrics.shutdown();
+    if let Some(server) = prometheus_server {
+        server.abort();
+    }
     Ok(())
 }

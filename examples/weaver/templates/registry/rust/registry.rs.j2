@@ -22,6 +22,7 @@ pub struct MetricDefinition {
     pub description: &'static str,
     pub unit: Option<&'static str>,
     pub label_names: &'static [&'static str],
+    pub prometheus_label_names: &'static [&'static str],
     pub kind: MetricKind,
     pub buckets: Option<&'static [f64]>,
 }
@@ -35,6 +36,7 @@ pub const METRIC_DEFINITIONS: &[MetricDefinition] = &[
         description: "{{ metric.brief }}",
         unit: {% if metric.unit %}Some("{{ metric.unit }}"){% else %}None{% endif %},
         label_names: &[{% for attribute in metric.attributes %}"{{ attribute }}"{% if not loop.last %}, {% endif %}{% endfor %}],
+        prometheus_label_names: &[{% for label in metric.prometheus_labels %}"{{ label }}"{% if not loop.last %}, {% endif %}{% endfor %}],
         kind: MetricKind::{{ metric.instrument | pascal_case }},
         buckets: {% if metric.buckets %}{% if metric.buckets | length > 10 %}Some(&[
             {{ metric.buckets | join(", ") }},

@@ -1,0 +1,9 @@
+# Chronos Metrics
+
+Generated from `examples/weaver/registry/chronos/metrics.yaml` by OpenTelemetry Weaver.
+
+| Metric | Prometheus Name | Instrument | Unit | Attributes | Description |
+| --- | --- | --- | --- | --- | --- |
+{% for metric in ctx.metrics -%}
+| `{{ metric.metric_name }}` | `{{ metric.prometheus_name }}` | `{{ metric.instrument }}` | `{{ metric.unit }}` | {% if metric.attributes %}{% for attribute in metric.attributes %}`{{ attribute }}`{% if not loop.last %}, {% endif %}{% endfor %}{% else %}-{% endif %} | {{ metric.brief }} |
+{% endfor -%}

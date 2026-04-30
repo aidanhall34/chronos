@@ -1,39 +1,49 @@
 groups:
+  - id: resource.chronos.service
+    type: attribute_group
+    stability: development
+    brief: Resource attributes emitted by the Chronos metrics mock.
+    attributes:
+      - id: service.name
+        type: string
+        stability: stable
+        brief: Logical name of the service.
+        examples: ["chronos-metrics-mock"]
+        requirement_level: required
+      - id: service.instance.id
+        type: string
+        stability: stable
+        brief: The string ID of the service instance.
+        examples: ["chronos-metrics-mock-live-check"]
+        requirement_level: required
+
   - id: metric_attributes.chronos.message_store
     type: attribute_group
     stability: development
     brief: Common attributes used by Chronos message store metrics.
     attributes:
-      - id: chronos.message.destination
+      - id: messaging.system
         type: string
         stability: development
-        brief: Destination used by Chronos while handling a consumed message.
-        examples: ["kafka", "postgres"]
+        brief: The messaging system as identified by the client instrumentation.
+        examples: ["kafka"]
         requirement_level: required
-      - id: chronos.operation.status
+      - id: messaging.operation.name
         type: string
         stability: development
-        brief: Low-cardinality operation result.
-        examples: ["pass", "fail"]
+        brief: The system-specific name of the messaging operation.
+        examples: ["receive", "process"]
         requirement_level: required
-
-  - id: metric_attributes.chronos.processor
-    type: attribute_group
-    stability: development
-    brief: Common attributes used by Chronos processor loop metrics.
-    attributes:
-      - id: chronos.processor.returned
-        type: boolean
+      - id: messaging.destination.name
+        type: string
         stability: development
-        brief: Whether the processor loop returned before processing any rows.
-        examples: [true, false]
-        requirement_level: required
-      - ref: chronos.operation.status
+        brief: The message destination name.
+        examples: ["chronos-input", "chronos-output"]
         requirement_level: required
 
   - id: metric.chronos.message.consumed
     type: metric
-    metric_name: chronos.message.consumed
+    metric_name: messaging.client.consumed.messages
     stability: development
     brief: Total number of Chronos input messages consumed.
     instrument: counter
@@ -43,11 +53,11 @@ groups:
       code_generation:
         rust_name: msg_consumed
         metric_value_type: int
-        prometheus_name: chronos_messages_consumed_total
+        prometheus_name: messaging_client_consumed_messages_total
 
   - id: metric.chronos.message.consume.duration
     type: metric
-    metric_name: chronos.message.consume.duration
+    metric_name: messaging.client.operation.duration
     stability: development
     brief: Duration of handle_message() in message_receiver.
     instrument: histogram
@@ -57,22 +67,22 @@ groups:
       code_generation:
         rust_name: msg_consume_latency
         metric_value_type: double
-        prometheus_name: chronos_message_consume_duration_seconds
+        prometheus_name: messaging_client_operation_duration_seconds
         buckets: [0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024, 2.048]
 
   - id: metric.chronos.message.process.duration
     type: metric
-    metric_name: chronos.message.process.duration
+    metric_name: messaging.process.duration
     stability: development
     brief: Duration of processor_message_ready() loop in message_processor.
     instrument: histogram
     unit: s
-    extends: metric_attributes.chronos.processor
+    extends: metric_attributes.chronos.message_store
     annotations:
       code_generation:
         rust_name: msg_process_latency
         metric_value_type: double
-        prometheus_name: chronos_message_process_duration_seconds
+        prometheus_name: messaging_process_duration_seconds
         buckets: [0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024, 2.048]
 
   - id: metric.chronos.message.wait.duration

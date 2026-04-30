@@ -1,0 +1,17 @@
+templates:
+  - pattern: metrics.md.j2
+    filter: >
+      {
+        metrics: (.groups
+          | map(select(.type == "metric"))
+          | map({
+              metric_name,
+              prometheus_name: .annotations.code_generation.prometheus_name,
+              brief,
+              instrument,
+              unit,
+              attributes: (.attributes // [] | map(.name // .id // .ref))
+            }))
+      }
+    application_mode: single
+    file_name: chronos_metrics.md

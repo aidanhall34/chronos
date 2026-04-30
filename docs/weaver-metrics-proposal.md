@@ -8,14 +8,14 @@ The example registry is in `examples/weaver/registry/chronos/metrics.yaml`. It d
 
 | OpenTelemetry metric | Prometheus output name | Instrument |
 | --- | --- | --- |
-| `chronos.message.consumed` | `chronos_messages_consumed_total` | counter |
-| `chronos.message.consume.duration` | `chronos_message_consume_duration_seconds` | histogram |
-| `chronos.message.process.duration` | `chronos_message_process_duration_seconds` | histogram |
+| `messaging.client.consumed.messages` | `messaging_client_consumed_messages_total` | counter |
+| `messaging.client.operation.duration` | `messaging_client_operation_duration_seconds` | histogram |
+| `messaging.process.duration` | `messaging_process_duration_seconds` | histogram |
 | `chronos.message.wait.duration` | `chronos_message_wait_duration_seconds` | histogram |
 | `chronos.message.jitter` | `chronos_message_jitter_seconds` | histogram |
 | `chronos.message.reset` | `chronos_messages_reset_total` | counter |
 
-The checked-in generated example is `examples/weaver/generated/chronos_metric_definitions.rs`. It mirrors the `MetricDefinition` table in `examples/prom_otlp_mock.rs`, with both `otel_name` and `prometheus_name` so each exporter can use the native naming convention it expects.
+The checked-in generated example is `examples/weaver/generated/chronos_metric_definitions.rs`. It mirrors the `MetricDefinition` table in `examples/prom_otlp_mock.rs`, with both `otel_name` and `prometheus_name` so each exporter can use the native naming convention it expects. The messaging metrics and attributes use OpenTelemetry semantic convention names; Chronos-specific timing and recovery metrics remain under the `chronos.*` namespace.
 
 ## Suggested Workflow
 
@@ -39,7 +39,18 @@ docker run --rm \
 rustfmt chronos_bin/src/metrics/generated/chronos_metric_definitions.rs
 ```
 
-Add a `make metrics.generate` target for the `registry generate` command and a `make metrics.check` target that runs `weaver registry check` plus a diff check that generated files are current. The pre-commit script can then call `make metrics.check` once Weaver is a documented development dependency.
+The repository now has Make targets for the main Weaver workflows:
+
+```sh
+make weaver.check
+make weaver.generate
+make weaver.generate.rust
+make weaver.generate.markdown
+make weaver.generate.json-schema
+make weaver.live-check
+```
+
+`make weaver.live-check` starts Weaver's OTLP live-check receiver with Docker, runs the mock with `OTEL_METRICS_EXPORTER=otlp`, and writes the report to `/tmp/chronos-weaver-live-check/live_check.json`.
 
 ## Implementation Path
 

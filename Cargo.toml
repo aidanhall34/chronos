@@ -10,6 +10,9 @@ members = [
     # migrations binary
     "pg_mig"
 ]
+exclude = [
+    "examples/weaver"
+]
 
 [workspace.dependencies]
 

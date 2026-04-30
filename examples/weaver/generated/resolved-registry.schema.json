@@ -1,0 +1,1830 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ResolvedRegistry",
+  "description": "A resolved semantic convention registry used in the context of the template and policy\nengines.",
+  "type": "object",
+  "properties": {
+    "groups": {
+      "description": "A list of semantic convention groups.",
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ResolvedGroup"
+      }
+    },
+    "registry_url": {
+      "description": "The semantic convention registry url.",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "registry_url",
+    "groups"
+  ],
+  "$defs": {
+    "AnyValueSpec": {
+      "description": "The AnyValueTypeSpec is a specification of a value that can be of any type.",
+      "oneOf": [
+        {
+          "description": "A boolean attribute.",
+          "type": "object",
+          "properties": {
+            "brief": {
+              "description": "A brief description of the value",
+              "type": "string"
+            },
+            "examples": {
+              "description": "Sequence of examples for the value or single example\nvalue. If only a single example is provided, it can\ndirectly be reported without encapsulating it\ninto a sequence/dictionary.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Examples"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "description": "String that uniquely identifies the enum entry.",
+              "type": "string"
+            },
+            "note": {
+              "description": "A more elaborate description of the value.\nIt defaults to an empty string.",
+              "type": "string"
+            },
+            "requirement_level": {
+              "description": "Specifies if the field is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe field is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the field is required.",
+              "$ref": "#/$defs/RequirementLevel"
+            },
+            "stability": {
+              "description": "Specifies the stability of the value.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Stability"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "boolean"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "requirement_level"
+          ]
+        },
+        {
+          "description": "A integer attribute (signed 64 bit integer).",
+          "type": "object",
+          "properties": {
+            "brief": {
+              "description": "A brief description of the value",
+              "type": "string"
+            },
+            "examples": {
+              "description": "Sequence of examples for the value or single example\nvalue. If only a single example is provided, it can\ndirectly be reported without encapsulating it\ninto a sequence/dictionary.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Examples"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "description": "String that uniquely identifies the enum entry.",
+              "type": "string"
+            },
+            "note": {
+              "description": "A more elaborate description of the value.\nIt defaults to an empty string.",
+              "type": "string"
+            },
+            "requirement_level": {
+              "description": "Specifies if the field is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe field is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the field is required.",
+              "$ref": "#/$defs/RequirementLevel"
+            },
+            "stability": {
+              "description": "Specifies the stability of the value.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Stability"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "int"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "requirement_level"
+          ]
+        },
+        {
+          "description": "A double attribute (double precision floating point (IEEE 754-1985)).",
+          "type": "object",
+          "properties": {
+            "brief": {
+              "description": "A brief description of the value",
+              "type": "string"
+            },
+            "examples": {
+              "description": "Sequence of examples for the value or single example\nvalue. If only a single example is provided, it can\ndirectly be reported without encapsulating it\ninto a sequence/dictionary.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Examples"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "description": "String that uniquely identifies the enum entry.",
+              "type": "string"
+            },
+            "note": {
+              "description": "A more elaborate description of the value.\nIt defaults to an empty string.",
+              "type": "string"
+            },
+            "requirement_level": {
+              "description": "Specifies if the field is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe field is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the field is required.",
+              "$ref": "#/$defs/RequirementLevel"
+            },
+            "stability": {
+              "description": "Specifies the stability of the value.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Stability"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "double"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "requirement_level"
+          ]
+        },
+        {
+          "description": "A string attribute.",
+          "type": "object",
+          "properties": {
+            "brief": {
+              "description": "A brief description of the value",
+              "type": "string"
+            },
+            "examples": {
+              "description": "Sequence of examples for the value or single example\nvalue. If only a single example is provided, it can\ndirectly be reported without encapsulating it\ninto a sequence/dictionary.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Examples"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "description": "String that uniquely identifies the enum entry.",
+              "type": "string"
+            },
+            "note": {
+              "description": "A more elaborate description of the value.\nIt defaults to an empty string.",
+              "type": "string"
+            },
+            "requirement_level": {
+              "description": "Specifies if the field is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe field is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the field is required.",
+              "$ref": "#/$defs/RequirementLevel"
+            },
+            "stability": {
+              "description": "Specifies the stability of the value.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Stability"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "string"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "requirement_level"
+          ]
+        },
+        {
+          "description": "An array of strings attribute.",
+          "type": "object",
+          "properties": {
+            "brief": {
+              "description": "A brief description of the value",
+              "type": "string"
+            },
+            "examples": {
+              "description": "Sequence of examples for the value or single example\nvalue. If only a single example is provided, it can\ndirectly be reported without encapsulating it\ninto a sequence/dictionary.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Examples"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "description": "String that uniquely identifies the enum entry.",
+              "type": "string"
+            },
+            "note": {
+              "description": "A more elaborate description of the value.\nIt defaults to an empty string.",
+              "type": "string"
+            },
+            "requirement_level": {
+              "description": "Specifies if the field is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe field is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the field is required.",
+              "$ref": "#/$defs/RequirementLevel"
+            },
+            "stability": {
+              "description": "Specifies the stability of the value.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Stability"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "string[]"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "requirement_level"
+          ]
+        },
+        {
+          "description": "An array of integer attribute.",
+          "type": "object",
+          "properties": {
+            "brief": {
+              "description": "A brief description of the value",
+              "type": "string"
+            },
+            "examples": {
+              "description": "Sequence of examples for the value or single example\nvalue. If only a single example is provided, it can\ndirectly be reported without encapsulating it\ninto a sequence/dictionary.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Examples"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "description": "String that uniquely identifies the enum entry.",
+              "type": "string"
+            },
+            "note": {
+              "description": "A more elaborate description of the value.\nIt defaults to an empty string.",
+              "type": "string"
+            },
+            "requirement_level": {
+              "description": "Specifies if the field is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe field is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the field is required.",
+              "$ref": "#/$defs/RequirementLevel"
+            },
+            "stability": {
+              "description": "Specifies the stability of the value.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Stability"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "int[]"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "requirement_level"
+          ]
+        },
+        {
+          "description": "An array of double attribute.",
+          "type": "object",
+          "properties": {
+            "brief": {
+              "description": "A brief description of the value",
+              "type": "string"
+            },
+            "examples": {
+              "description": "Sequence of examples for the value or single example\nvalue. If only a single example is provided, it can\ndirectly be reported without encapsulating it\ninto a sequence/dictionary.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Examples"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "description": "String that uniquely identifies the enum entry.",
+              "type": "string"
+            },
+            "note": {
+              "description": "A more elaborate description of the value.\nIt defaults to an empty string.",
+              "type": "string"
+            },
+            "requirement_level": {
+              "description": "Specifies if the field is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe field is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the field is required.",
+              "$ref": "#/$defs/RequirementLevel"
+            },
+            "stability": {
+              "description": "Specifies the stability of the value.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Stability"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "double[]"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "requirement_level"
+          ]
+        },
+        {
+          "description": "An array of boolean attribute.",
+          "type": "object",
+          "properties": {
+            "brief": {
+              "description": "A brief description of the value",
+              "type": "string"
+            },
+            "examples": {
+              "description": "Sequence of examples for the value or single example\nvalue. If only a single example is provided, it can\ndirectly be reported without encapsulating it\ninto a sequence/dictionary.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Examples"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "description": "String that uniquely identifies the enum entry.",
+              "type": "string"
+            },
+            "note": {
+              "description": "A more elaborate description of the value.\nIt defaults to an empty string.",
+              "type": "string"
+            },
+            "requirement_level": {
+              "description": "Specifies if the field is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe field is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the field is required.",
+              "$ref": "#/$defs/RequirementLevel"
+            },
+            "stability": {
+              "description": "Specifies the stability of the value.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Stability"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "boolean[]"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "requirement_level"
+          ]
+        },
+        {
+          "description": "The value type is a map of key, value pairs",
+          "type": "object",
+          "properties": {
+            "brief": {
+              "description": "A brief description of the value",
+              "type": "string"
+            },
+            "examples": {
+              "description": "Sequence of examples for the value or single example\nvalue. If only a single example is provided, it can\ndirectly be reported without encapsulating it\ninto a sequence/dictionary.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Examples"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "fields": {
+              "description": "The collection of key, values where the value is an `AnyValueSpec`",
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/AnyValueSpec"
+              }
+            },
+            "id": {
+              "description": "String that uniquely identifies the enum entry.",
+              "type": "string"
+            },
+            "note": {
+              "description": "A more elaborate description of the value.\nIt defaults to an empty string.",
+              "type": "string"
+            },
+            "requirement_level": {
+              "description": "Specifies if the field is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe field is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the field is required.",
+              "$ref": "#/$defs/RequirementLevel"
+            },
+            "stability": {
+              "description": "Specifies the stability of the value.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Stability"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "map"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "requirement_level",
+            "fields"
+          ]
+        },
+        {
+          "description": "The value type is a map of key, value pairs",
+          "type": "object",
+          "properties": {
+            "brief": {
+              "description": "A brief description of the value",
+              "type": "string"
+            },
+            "examples": {
+              "description": "Sequence of examples for the value or single example\nvalue. If only a single example is provided, it can\ndirectly be reported without encapsulating it\ninto a sequence/dictionary.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Examples"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "fields": {
+              "description": "The collection of key, values where the value is an `AnyValueSpec`",
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/AnyValueSpec"
+              }
+            },
+            "id": {
+              "description": "String that uniquely identifies the enum entry.",
+              "type": "string"
+            },
+            "note": {
+              "description": "A more elaborate description of the value.\nIt defaults to an empty string.",
+              "type": "string"
+            },
+            "requirement_level": {
+              "description": "Specifies if the field is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe field is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the field is required.",
+              "$ref": "#/$defs/RequirementLevel"
+            },
+            "stability": {
+              "description": "Specifies the stability of the value.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Stability"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "map[]"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "requirement_level",
+            "fields"
+          ]
+        },
+        {
+          "description": "The value type will just be a bytes.",
+          "type": "object",
+          "properties": {
+            "brief": {
+              "description": "A brief description of the value",
+              "type": "string"
+            },
+            "examples": {
+              "description": "Sequence of examples for the value or single example\nvalue. If only a single example is provided, it can\ndirectly be reported without encapsulating it\ninto a sequence/dictionary.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Examples"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "description": "String that uniquely identifies the enum entry.",
+              "type": "string"
+            },
+            "note": {
+              "description": "A more elaborate description of the value.\nIt defaults to an empty string.",
+              "type": "string"
+            },
+            "requirement_level": {
+              "description": "Specifies if the field is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe field is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the field is required.",
+              "$ref": "#/$defs/RequirementLevel"
+            },
+            "stability": {
+              "description": "Specifies the stability of the value.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Stability"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "bytes"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "requirement_level"
+          ]
+        },
+        {
+          "description": "The value type is not specified.",
+          "type": "object",
+          "properties": {
+            "brief": {
+              "description": "A brief description of the value",
+              "type": "string"
+            },
+            "examples": {
+              "description": "Sequence of examples for the value or single example\nvalue. If only a single example is provided, it can\ndirectly be reported without encapsulating it\ninto a sequence/dictionary.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Examples"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "description": "String that uniquely identifies the enum entry.",
+              "type": "string"
+            },
+            "note": {
+              "description": "A more elaborate description of the value.\nIt defaults to an empty string.",
+              "type": "string"
+            },
+            "requirement_level": {
+              "description": "Specifies if the field is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe field is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the field is required.",
+              "$ref": "#/$defs/RequirementLevel"
+            },
+            "stability": {
+              "description": "Specifies the stability of the value.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Stability"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "undefined"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "requirement_level"
+          ]
+        },
+        {
+          "description": "An enum definition type.",
+          "type": "object",
+          "properties": {
+            "brief": {
+              "description": "A brief description of the value",
+              "type": "string"
+            },
+            "examples": {
+              "description": "Sequence of examples for the value or single example\nvalue. If only a single example is provided, it can\ndirectly be reported without encapsulating it\ninto a sequence/dictionary.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Examples"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "id": {
+              "description": "String that uniquely identifies the enum entry.",
+              "type": "string"
+            },
+            "members": {
+              "description": "List of enum entries.",
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EnumEntriesSpec"
+              }
+            },
+            "note": {
+              "description": "A more elaborate description of the value.\nIt defaults to an empty string.",
+              "type": "string"
+            },
+            "requirement_level": {
+              "description": "Specifies if the field is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe field is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the field is required.",
+              "$ref": "#/$defs/RequirementLevel"
+            },
+            "stability": {
+              "description": "Specifies the stability of the value.",
+              "anyOf": [
+                {
+                  "$ref": "#/$defs/Stability"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "type": {
+              "type": "string",
+              "const": "enum"
+            }
+          },
+          "required": [
+            "type",
+            "id",
+            "requirement_level",
+            "members"
+          ]
+        }
+      ]
+    },
+    "Attribute": {
+      "description": "An attribute definition.",
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations for the group.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/YamlValue"
+          }
+        },
+        "brief": {
+          "description": "A brief description of the attribute.",
+          "type": "string"
+        },
+        "deprecated": {
+          "description": "Specifies if the attribute is deprecated.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Deprecated"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "examples": {
+          "description": "Sequence of example values for the attribute or single example\nvalue. They are required only for string and string array\nattributes. Example values must be of the same type of the\nattribute. If only a single example is provided, it can directly\nbe reported without encapsulating it into a sequence/dictionary.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Examples"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "description": "Attribute name.",
+          "type": "string"
+        },
+        "note": {
+          "description": "A more elaborate description of the attribute.\nIt defaults to an empty string.",
+          "type": "string"
+        },
+        "prefix": {
+          "description": "Specifies the prefix of the attribute.\nIf this parameter is set, the resolved id of the referenced attribute will\nhave group prefix added to it.\nIt defaults to false.",
+          "type": "boolean"
+        },
+        "requirement_level": {
+          "description": "Specifies if the attribute is mandatory. Can be \"required\",\n\"conditionally_required\", \"recommended\" or \"opt_in\". When omitted,\nthe attribute is \"recommended\". When set to\n\"conditionally_required\", the string provided as <condition> MUST\nspecify the conditions under which the attribute is required.",
+          "$ref": "#/$defs/RequirementLevel"
+        },
+        "role": {
+          "description": "Whether the attribute is identifying or descriptive.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AttributeRole"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "sampling_relevant": {
+          "description": "Specifies if the attribute is (especially) relevant for sampling\nand thus should be set at span start. It defaults to false.\nNote: this field is experimental.",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        },
+        "stability": {
+          "description": "Specifies the stability of the attribute.\nNote that, if stability is missing but deprecated is present, it will\nautomatically set the stability to deprecated. If deprecated is\npresent and stability differs from deprecated, this will result in an\nerror.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Stability"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tag": {
+          "description": "Associates a tag (\"sub-group\") to the attribute. It carries no\nparticular semantic meaning but can be used e.g. for filtering\nin the markdown generator.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "tags": {
+          "description": "A set of tags for the attribute.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Tags"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "description": "Either a string literal denoting the type as a primitive or an\narray type, a template type or an enum definition.",
+          "$ref": "#/$defs/AttributeType"
+        },
+        "value": {
+          "description": "The value of the attribute.\nNote: This is only used in a telemetry schema specification.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Value"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "type",
+        "brief",
+        "requirement_level"
+      ]
+    },
+    "AttributeLineage": {
+      "description": "Attribute lineage (at the field level).",
+      "type": "object",
+      "properties": {
+        "inherited_fields": {
+          "description": "A list of fields that are inherited from the source group.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "locally_overridden_fields": {
+          "description": "A list of fields that are overridden in the local group.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        },
+        "source_group": {
+          "description": "The group id where the attribute is coming from.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source_group"
+      ]
+    },
+    "AttributeRole": {
+      "description": "The different roles for attributes in groups.",
+      "oneOf": [
+        {
+          "description": "The attribute is considered identifying for the signal it is associated with.",
+          "type": "string",
+          "const": "identifying"
+        },
+        {
+          "description": "The attribute is considered descriptive for the signal it is associated with.",
+          "type": "string",
+          "const": "descriptive"
+        }
+      ]
+    },
+    "AttributeType": {
+      "description": "The different types of attributes (specification).",
+      "anyOf": [
+        {
+          "description": "Primitive or array type.",
+          "$ref": "#/$defs/PrimitiveOrArrayTypeSpec"
+        },
+        {
+          "description": "A template type.",
+          "$ref": "#/$defs/TemplateTypeSpec"
+        },
+        {
+          "description": "An enum definition type.",
+          "type": "object",
+          "properties": {
+            "members": {
+              "description": "List of enum entries.",
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/EnumEntriesSpec"
+              }
+            }
+          },
+          "required": [
+            "members"
+          ]
+        }
+      ]
+    },
+    "BasicRequirementLevelSpec": {
+      "description": "The different types of basic requirement levels.",
+      "oneOf": [
+        {
+          "description": "A required requirement level.",
+          "type": "string",
+          "const": "required"
+        },
+        {
+          "description": "An optional requirement level.",
+          "type": "string",
+          "const": "recommended"
+        },
+        {
+          "description": "An opt-in requirement level.",
+          "type": "string",
+          "const": "opt_in"
+        }
+      ]
+    },
+    "Deprecated": {
+      "description": "The different ways to deprecate an attribute, a metric, ...",
+      "oneOf": [
+        {
+          "description": "The telemetry object containing the deprecated field has been renamed to an\nexisting or a new telemetry object.",
+          "type": "object",
+          "properties": {
+            "note": {
+              "description": "The note to provide more context about the deprecation.",
+              "type": "string"
+            },
+            "reason": {
+              "type": "string",
+              "const": "renamed"
+            },
+            "renamed_to": {
+              "description": "The new name of the telemetry object.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "reason",
+            "renamed_to",
+            "note"
+          ]
+        },
+        {
+          "description": "The telemetry object containing the deprecated field has been obsoleted\nbecause it no longer exists and has no valid replacement.\n\nThe `brief` field should contain the reason why the field has been obsoleted.",
+          "type": "object",
+          "properties": {
+            "note": {
+              "description": "The note to provide more context about the deprecation.",
+              "type": "string"
+            },
+            "reason": {
+              "type": "string",
+              "const": "obsoleted"
+            }
+          },
+          "required": [
+            "reason",
+            "note"
+          ]
+        },
+        {
+          "description": "The telemetry object containing the deprecated field has been deprecated for\ncomplex reasons (split, merge, ...) which are currently not precisely defined\nin the supported deprecation reasons.\n\nThe `brief` field should contain the reason for this uncategorized deprecation.",
+          "type": "object",
+          "properties": {
+            "note": {
+              "description": "The note to provide more context about the deprecation.",
+              "type": "string"
+            },
+            "reason": {
+              "type": "string",
+              "const": "uncategorized"
+            }
+          },
+          "required": [
+            "reason",
+            "note"
+          ]
+        },
+        {
+          "description": "This variant is used to capture old, unstructured deprecated \"string\".\nUsed for backward-compatibility only.",
+          "type": "object",
+          "properties": {
+            "note": {
+              "description": "The note to provide more context about the deprecation.",
+              "type": "string"
+            },
+            "reason": {
+              "type": "string",
+              "const": "unspecified"
+            }
+          },
+          "required": [
+            "reason",
+            "note"
+          ]
+        }
+      ]
+    },
+    "EnumEntriesSpec": {
+      "description": "Possible enum entries.",
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations for the member.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/YamlValue"
+          }
+        },
+        "brief": {
+          "description": "Brief description of the enum entry value.\nIt defaults to the value of id.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "deprecated": {
+          "description": "Deprecation note.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Deprecated"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "description": "String that uniquely identifies the enum entry.",
+          "type": "string"
+        },
+        "note": {
+          "description": "Longer description.\nIt defaults to an empty string.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "stability": {
+          "description": "Stability of this enum value.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Stability"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "value": {
+          "description": "String, int, or boolean; value of the enum entry.",
+          "$ref": "#/$defs/ValueSpec"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "value"
+      ]
+    },
+    "Examples": {
+      "description": "The different types of examples.",
+      "anyOf": [
+        {
+          "description": "A boolean example.",
+          "type": "boolean"
+        },
+        {
+          "description": "A integer example.",
+          "type": "integer",
+          "format": "int64"
+        },
+        {
+          "description": "A double example.",
+          "type": "number",
+          "format": "double"
+        },
+        {
+          "description": "A string example.",
+          "type": "string"
+        },
+        {
+          "description": "A any example.",
+          "$ref": "#/$defs/ValueSpec"
+        },
+        {
+          "description": "A array of integers example.",
+          "type": "array",
+          "items": {
+            "type": "integer",
+            "format": "int64"
+          }
+        },
+        {
+          "description": "A array of doubles example.",
+          "type": "array",
+          "items": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        {
+          "description": "A array of bools example.",
+          "type": "array",
+          "items": {
+            "type": "boolean"
+          }
+        },
+        {
+          "description": "A array of strings example.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        {
+          "description": "A array of anys example.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/ValueSpec"
+          }
+        },
+        {
+          "description": "List of arrays of integers example.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        },
+        {
+          "description": "List of arrays of doubles example.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            }
+          }
+        },
+        {
+          "description": "List of arrays of bools example.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "boolean"
+            }
+          }
+        },
+        {
+          "description": "List of arrays of strings example.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "GroupLineage": {
+      "description": "Group lineage.",
+      "type": "object",
+      "properties": {
+        "attributes": {
+          "description": "The lineage per attribute.\n\nNote: Use a BTreeMap to ensure a deterministic order of attributes.\nThis is important to keep unit tests stable.",
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/AttributeLineage"
+          }
+        },
+        "extends_group": {
+          "description": "The group that this group extended, if available.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "includes_group": {
+          "description": "(V2 Only) Attribute groups included in this group.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "provenance": {
+          "description": "The provenance of the source file where the group is defined.",
+          "$ref": "#/$defs/Provenance"
+        }
+      },
+      "required": [
+        "provenance"
+      ]
+    },
+    "GroupType": {
+      "description": "The different types of groups: `attribute_group`, `span`, `event`, `metric`, `entity`, `scope`.\n\nNote: The `resource` type is no longer used and is an alias for `entity`.",
+      "oneOf": [
+        {
+          "description": "Attribute group (attribute_group type) defines a set of attributes that\ncan be declared once and referenced by semantic conventions for\ndifferent signals, for example spans and logs. Attribute groups don't\nhave any specific fields and follow the general semconv semantics.",
+          "type": "string",
+          "const": "attribute_group"
+        },
+        {
+          "description": "Span semantic convention.",
+          "type": "string",
+          "const": "span"
+        },
+        {
+          "description": "Event semantic convention.",
+          "type": "string",
+          "const": "event"
+        },
+        {
+          "description": "Metric semantic convention.",
+          "type": "string",
+          "const": "metric"
+        },
+        {
+          "description": "The metric group semconv is a group where related metric attributes can\nbe defined and then referenced from other metric groups using ref.",
+          "type": "string",
+          "const": "metric_group"
+        },
+        {
+          "description": "Entity semantic convention.",
+          "type": "string",
+          "const": "entity"
+        },
+        {
+          "description": "Scope.",
+          "type": "string",
+          "const": "scope"
+        },
+        {
+          "description": "Undefined group type.",
+          "type": "string",
+          "const": "undefined"
+        }
+      ]
+    },
+    "InstrumentSpec": {
+      "description": "The type of the metric.",
+      "oneOf": [
+        {
+          "description": "An up-down counter metric.",
+          "type": "string",
+          "const": "updowncounter"
+        },
+        {
+          "description": "A counter metric.",
+          "type": "string",
+          "const": "counter"
+        },
+        {
+          "description": "A gauge metric.",
+          "type": "string",
+          "const": "gauge"
+        },
+        {
+          "description": "A histogram metric.",
+          "type": "string",
+          "const": "histogram"
+        }
+      ]
+    },
+    "PrimitiveOrArrayTypeSpec": {
+      "description": "Primitive or array types.",
+      "oneOf": [
+        {
+          "description": "A boolean attribute.",
+          "type": "string",
+          "const": "boolean"
+        },
+        {
+          "description": "A integer attribute (signed 64 bit integer).",
+          "type": "string",
+          "const": "int"
+        },
+        {
+          "description": "A double attribute (double precision floating point (IEEE 754-1985)).",
+          "type": "string",
+          "const": "double"
+        },
+        {
+          "description": "A string attribute.",
+          "type": "string",
+          "const": "string"
+        },
+        {
+          "description": "An any type attribute (accepts any valid value).",
+          "type": "string",
+          "const": "any"
+        },
+        {
+          "description": "An array of strings attribute.",
+          "type": "string",
+          "const": "string[]"
+        },
+        {
+          "description": "An array of integer attribute.",
+          "type": "string",
+          "const": "int[]"
+        },
+        {
+          "description": "An array of double attribute.",
+          "type": "string",
+          "const": "double[]"
+        },
+        {
+          "description": "An array of boolean attribute.",
+          "type": "string",
+          "const": "boolean[]"
+        }
+      ]
+    },
+    "Provenance": {
+      "description": "The provenance a semantic convention specification file.",
+      "type": "object",
+      "properties": {
+        "path": {
+          "description": "The path to the specification file.\n\nThis is the path is only available *locally*. When publishing resolved schemas,\nthis field is not included.",
+          "type": "string"
+        },
+        "schema_url": {
+          "description": "The schema URL where this was specified.\n\nThe Schema url contains the registry id and the version of the schema.\nIt can be used to detect conflicts or resolve multiple \"ids\" existing across\ndependency chains but being the same thing, conceptually.",
+          "$ref": "#/$defs/SchemaUrl"
+        }
+      },
+      "required": [
+        "schema_url",
+        "path"
+      ]
+    },
+    "RequirementLevel": {
+      "description": "The different requirement level specifications.",
+      "anyOf": [
+        {
+          "description": "A basic requirement level.",
+          "$ref": "#/$defs/BasicRequirementLevelSpec"
+        },
+        {
+          "description": "A conditional requirement level.",
+          "type": "object",
+          "properties": {
+            "conditionally_required": {
+              "description": "The description of the condition.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "conditionally_required"
+          ]
+        },
+        {
+          "description": "A recommended requirement level.",
+          "type": "object",
+          "properties": {
+            "recommended": {
+              "description": "The description of the recommendation.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "recommended"
+          ]
+        },
+        {
+          "description": "An opt in requirement level.",
+          "type": "object",
+          "properties": {
+            "opt_in": {
+              "description": "The description of the recommendation.",
+              "type": "string"
+            }
+          },
+          "required": [
+            "opt_in"
+          ]
+        }
+      ]
+    },
+    "ResolvedGroup": {
+      "description": "Resolved group specification used in the context of the template engine.",
+      "type": "object",
+      "properties": {
+        "annotations": {
+          "description": "Annotations for the group.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "$ref": "#/$defs/YamlValue"
+          }
+        },
+        "attributes": {
+          "description": "List of attributes that belong to the semantic convention.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Attribute"
+          }
+        },
+        "body": {
+          "description": "The body specification used for event semantic conventions.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AnyValueSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "brief": {
+          "description": "A brief description of the semantic convention.",
+          "type": "string"
+        },
+        "deprecated": {
+          "description": "Specifies if the semantic convention is deprecated. The string\nprovided as `description` MUST specify why it's deprecated and/or what\nto use instead. See also stability.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Deprecated"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "display_name": {
+          "description": "The readable name for attribute groups used when generating registry tables.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "entity_associations": {
+          "description": "The associated entities of this group.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "events": {
+          "description": "List of strings that specify the ids of event semantic conventions\nassociated with this span semantic convention.\nNote: only valid if type is span",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "extends": {
+          "description": "Reference another semantic convention id. It inherits\nall attributes defined in the specified semantic\nconvention.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "id": {
+          "description": "The id that uniquely identifies the semantic convention.",
+          "type": "string"
+        },
+        "instrument": {
+          "description": "The instrument type that should be used to record the metric. Note that\nthe semantic conventions must be written using the names of the\nsynchronous instrument types (counter, gauge, updowncounter and\nhistogram).\nFor more details: [Metrics semantic conventions - Instrument types](https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/metrics/semantic_conventions#instrument-types).\nNote: This field is required if type is metric.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InstrumentSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lineage": {
+          "description": "The lineage of the group.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/GroupLineage"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "metric_name": {
+          "description": "The metric name as described by the [OpenTelemetry Specification](https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/metrics/data-model.md#timeseries-model).\nNote: This field is required if type is metric.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "name": {
+          "description": "The name of the event. If not specified, the prefix is used.\nIf prefix is empty (or unspecified), name is required.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "note": {
+          "description": "A more elaborate description of the semantic convention.\nIt defaults to an empty string.",
+          "type": "string"
+        },
+        "prefix": {
+          "description": "Prefix for the attributes for this semantic convention.\nIt defaults to an empty string.",
+          "type": "string"
+        },
+        "span_kind": {
+          "description": "Specifies the kind of the span.\nNote: only valid if type is span",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SpanKindSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "stability": {
+          "description": "Specifies the stability of the semantic convention.\nNote that, if stability is missing but deprecated is present, it will\nautomatically set the stability to deprecated. If deprecated is\npresent and stability differs from deprecated, this will result in an\nerror.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Stability"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "description": "The type of the group including the specific fields for each type.",
+          "$ref": "#/$defs/GroupType"
+        },
+        "unit": {
+          "description": "The unit in which the metric is measured, which should adhere to the\n[guidelines](https://github.com/open-telemetry/opentelemetry-specification/tree/main/specification/metrics/semantic_conventions#instrument-units).\nNote: This field is required if type is metric.",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "brief"
+      ]
+    },
+    "SchemaUrl": {
+      "description": "Represents the schema URL of a registry, which serves as a unique identifier for the registry\nalong with its version.",
+      "type": "object",
+      "properties": {
+        "url": {
+          "description": "The schema URL string.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ]
+    },
+    "SpanKindSpec": {
+      "description": "The span kind.",
+      "oneOf": [
+        {
+          "description": "An internal span.",
+          "type": "string",
+          "const": "internal"
+        },
+        {
+          "description": "A client span.",
+          "type": "string",
+          "const": "client"
+        },
+        {
+          "description": "A server span.",
+          "type": "string",
+          "const": "server"
+        },
+        {
+          "description": "A producer span.",
+          "type": "string",
+          "const": "producer"
+        },
+        {
+          "description": "A consumer span.",
+          "type": "string",
+          "const": "consumer"
+        }
+      ]
+    },
+    "Stability": {
+      "description": "The level of stability for a definition. Defined in [OTEP-232](https://github.com/open-telemetry/oteps/blob/main/text/0232-maturity-of-otel.md)",
+      "oneOf": [
+        {
+          "description": "A deprecated definition.",
+          "type": "string",
+          "const": "deprecated",
+          "deprecated": true
+        },
+        {
+          "description": "A stable definition.",
+          "type": "string",
+          "const": "stable"
+        },
+        {
+          "description": "A definition in development. Formally known as experimental.",
+          "type": "string",
+          "const": "development"
+        },
+        {
+          "description": "An alpha definition.",
+          "type": "string",
+          "const": "alpha"
+        },
+        {
+          "description": "A beta definition.",
+          "type": "string",
+          "const": "beta"
+        },
+        {
+          "description": "A release candidate definition.",
+          "type": "string",
+          "const": "release_candidate"
+        }
+      ]
+    },
+    "Tags": {
+      "description": "A set of tags.\n\nExamples of tags:\n- sensitivity: pii\n- sensitivity: phi\n- data_classification: restricted\n- semantic_type: email\n- semantic_type: first_name\n- owner:\n- provenance: browser_sensor",
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "TemplateTypeSpec": {
+      "description": "Template types.",
+      "oneOf": [
+        {
+          "description": "A boolean attribute.",
+          "type": "string",
+          "const": "template[boolean]"
+        },
+        {
+          "description": "A integer attribute.",
+          "type": "string",
+          "const": "template[int]"
+        },
+        {
+          "description": "A double attribute.",
+          "type": "string",
+          "const": "template[double]"
+        },
+        {
+          "description": "A string attribute.",
+          "type": "string",
+          "const": "template[string]"
+        },
+        {
+          "description": "A any attribute.",
+          "type": "string",
+          "const": "template[any]"
+        },
+        {
+          "description": "An array of strings attribute.",
+          "type": "string",
+          "const": "template[string[]]"
+        },
+        {
+          "description": "An array of integer attribute.",
+          "type": "string",
+          "const": "template[int[]]"
+        },
+        {
+          "description": "An array of double attribute.",
+          "type": "string",
+          "const": "template[double[]]"
+        },
+        {
+          "description": "An array of boolean attribute.",
+          "type": "string",
+          "const": "template[boolean[]]"
+        }
+      ]
+    },
+    "Value": {
+      "description": "The different types of values.",
+      "oneOf": [
+        {
+          "description": "A integer value.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "Int"
+            },
+            "value": {
+              "description": "The value",
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          "required": [
+            "type",
+            "value"
+          ]
+        },
+        {
+          "description": "A double value.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "Double"
+            },
+            "value": {
+              "description": "The value",
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "required": [
+            "type",
+            "value"
+          ]
+        },
+        {
+          "description": "A string value.",
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "String"
+            },
+            "value": {
+              "description": "The value",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "value"
+          ]
+        }
+      ]
+    },
+    "ValueSpec": {
+      "description": "The different types of values.",
+      "anyOf": [
+        {
+          "description": "A integer value.",
+          "type": "integer",
+          "format": "int64"
+        },
+        {
+          "description": "A double value.",
+          "type": "number",
+          "format": "double"
+        },
+        {
+          "description": "A string value.",
+          "type": "string"
+        },
+        {
+          "description": "A boolean value.",
+          "type": "boolean"
+        }
+      ]
+    },
+    "YamlValue": {
+      "type": [
+        "null",
+        "boolean",
+        "object",
+        "array",
+        "number",
+        "string"
+      ]
+    }
+  }
+}

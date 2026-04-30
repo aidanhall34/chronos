@@ -13,6 +13,7 @@ templates:
               instrument,
               unit,
               attributes: (.attributes // [] | map(.name // .id // .ref)),
+              prometheus_labels: (.attributes // [] | map((.name // .id // .ref) | gsub("\\."; "_"))),
               buckets: .annotations.code_generation.buckets
             }))
       }
