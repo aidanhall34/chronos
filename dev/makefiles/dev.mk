@@ -1,3 +1,5 @@
+RECIPE ?= help
+
 ## setup: Check local development dependencies and prepare .env
 setup:
 	$(call pp,checking development dependencies...)
@@ -14,7 +16,7 @@ setup:
 ## withenv: Run a make recipe with variables loaded from .env, for example make withenv RECIPE=run
 withenv:
 	test -e .env || cp .env.example .env
-	bash -c 'set -o allexport; source .env; set +o allexport; make "$$RECIPE"'
+	bash -c 'set -o allexport; source .env; set +o allexport; make "$(RECIPE)"'
 
 ## dev.init: Initialize local dev environment
 dev.init: setup
@@ -23,31 +25,42 @@ dev.init: setup
 
 dev.chronos_ex:
 	$(call pp,creating kafka topic...)
-	cargo run --example chronos_ex
+	test -e .env || cp .env.example .env
+	bash -c 'set -o allexport; source .env; set +o allexport; cargo run --example chronos_ex'
 
 ## pg.create: Create database
 pg.create:
 	$(call pp,creating database...)
-	cargo run --example pg_create_database
+	test -e .env || cp .env.example .env
+	bash -c 'set -o allexport; source .env; set +o allexport; cargo run --example pg_create_database'
 
 ## pg.migrate: Run migrations on database
 pg.migrate:
 	$(call pp,running migrations on database...)
-	cargo run --package pg_mig --bin chronos-pg-migrations
+	test -e .env || cp .env.example .env
+	bash -c 'set -o allexport; source .env; set +o allexport; cargo run --package pg_mig --bin chronos-pg-migrations'
 
 ## run: Run Chronos locally
 run:
 	$(call pp,run app...)
-	cargo run --package chronos_bin --bin chronos
+	test -e .env || cp .env.example .env
+	bash -c 'set -o allexport; source .env; set +o allexport; cargo run --package chronos_bin --bin chronos'
 
 ## run.release: Run Chronos locally in release mode
 run.release:
 	$(call pp,run app...)
-	cargo run --package chronos_bin -r --bin chronos
+	test -e .env || cp .env.example .env
+	bash -c 'set -o allexport; source .env; set +o allexport; cargo run --package chronos_bin -r --bin chronos'
 
 ## dev.run: Run Chronos in cargo-watch mode
 dev.run:
 	$(call pp,run app...)
-	cargo watch -q -c -x 'run --package chronos_bin --bin chronos'
+	test -e .env || cp .env.example .env
+	@if cargo watch --version >/dev/null 2>&1; then \
+		bash -c 'set -o allexport; source .env; set +o allexport; cargo watch -q -c -x "run --package chronos_bin --bin chronos"'; \
+	else \
+		printf 'cargo-watch not installed; falling back to one cargo run invocation.\n' >&2; \
+		bash -c 'set -o allexport; source .env; set +o allexport; cargo run --package chronos_bin --bin chronos'; \
+	fi
 
 .PHONY: setup withenv dev.init dev.chronos_ex pg.create pg.migrate run run.release dev.run

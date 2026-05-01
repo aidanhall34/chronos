@@ -31,7 +31,7 @@ fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
     if service_name.is_err() {
         std::env::set_var("OTEL_SERVICE_NAME", "chronos");
     }
-    if trace_exporter.is_ok() {
+    if let Ok(trace_exporter) = trace_exporter {
         global::set_text_map_propagator(TraceContextPropagator::new());
         let os_resource = OsResourceDetector.detect(Duration::from_secs(0));
         let process_resource = ProcessResourceDetector.detect(Duration::from_secs(0));
@@ -40,7 +40,7 @@ fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
         let telemetry_resource = TelemetryResourceDetector.detect(Duration::from_secs(0));
         opentelemetry_otlp::new_pipeline()
             .tracing()
-            .with_exporter(opentelemetry_otlp::new_exporter().http().with_endpoint(format!("{:?}", service_name)))
+            .with_exporter(opentelemetry_otlp::new_exporter().http().with_endpoint(trace_exporter))
             .with_trace_config(
                 sdktrace::config().with_resource(
                     os_resource

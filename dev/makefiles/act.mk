@@ -3,7 +3,8 @@ ACT_JOB ?= pre-commit
 ACT_RUNNER_IMAGE ?= catthehacker/ubuntu:act-latest
 ACT_ARTIFACT_DIR ?= /tmp/chronos-act-artifacts
 ACT_EVENT_DIR ?= /tmp/chronos-act-events
-ACT_FLAGS ?= -P ubuntu-latest=$(ACT_RUNNER_IMAGE) --artifact-server-path $(ACT_ARTIFACT_DIR)
+ACT_ARTIFACT_ADDR ?= 127.0.0.1
+ACT_FLAGS ?= -P ubuntu-latest=$(ACT_RUNNER_IMAGE) --artifact-server-path $(ACT_ARTIFACT_DIR) --artifact-server-addr $(ACT_ARTIFACT_ADDR)
 
 CI_WORKFLOW ?= .github/workflows/CI.yaml
 PRE_COMMIT_WORKFLOW ?= .github/workflows/pre-commit.yml

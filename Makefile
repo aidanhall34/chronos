@@ -1,4 +1,5 @@
 SHELL := /usr/bin/env bash
+.DEFAULT_GOAL := help
 
 MAKEFILES_DIR := dev/makefiles
 COMMON_MAKEFILE := $(MAKEFILES_DIR)/common.mk

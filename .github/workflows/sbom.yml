@@ -48,7 +48,7 @@ jobs:
 
       - name: Generate container SBOM
         if: inputs.target-type == 'container'
-        uses: aquasecurity/trivy-action@0.32.0
+        uses: aquasecurity/trivy-action@v0.32.0
         with:
           scan-type: image
           scan-ref: ${{ inputs.target-ref }}
@@ -57,7 +57,7 @@ jobs:
 
       - name: Generate release SBOM
         if: inputs.target-type == 'release'
-        uses: aquasecurity/trivy-action@0.32.0
+        uses: aquasecurity/trivy-action@v0.32.0
         with:
           scan-type: fs
           scan-ref: ${{ inputs.target-ref }}
