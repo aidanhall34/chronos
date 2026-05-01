@@ -7,6 +7,11 @@ K6_CI_OTLP_ENDPOINT ?= host.docker.internal:4317
 K6_DEFAULT_OTEL_ENDPOINT := $(if $(and $(GITHUB_ACTIONS),$(if $(ACT),,1)),$(K6_CI_OTLP_ENDPOINT),lgtm:4317)
 K6_OTEL_GRPC_EXPORTER_ENDPOINT ?= $(K6_DEFAULT_OTEL_ENDPOINT)
 K6_DOCKER_NETWORK ?= $(if $(and $(GITHUB_ACTIONS),$(if $(ACT),,1)),bridge,chronos)
+K6_FULL_LOAD ?= false
+K6_LOAD_DEFAULT_RATE := $(if $(filter true 1 yes,$(K6_FULL_LOAD)),1000,100)
+K6_LOAD_DEFAULT_DURATION := $(if $(filter true 1 yes,$(K6_FULL_LOAD)),1m,1m)
+K6_LOAD_DEFAULT_CONSUME_DURATION := $(if $(filter true 1 yes,$(K6_FULL_LOAD)),2m,30s)
+K6_LOAD_PROFILE := $(if $(filter true 1 yes,$(K6_FULL_LOAD)),full load,load)
 K6_COMMON_ENV := \
 	-e KAFKA_BROKERS=$${KAFKA_BROKERS:-kafka:9092} \
 	-e KAFKA_IN_TOPIC=$${KAFKA_IN_TOPIC:-chronos.in} \
@@ -29,14 +34,14 @@ k6.contract:
 	mkdir -p "$(K6_LOG_DIR)"
 	$(K6_DOCKER_RUN) --entrypoint bash $(K6_IMAGE) -lc 'k6 run --out opentelemetry /scripts/contract.js 2>&1 | tee -a /data/lgtm/logs/k6-contract.jsonl; exit $${PIPESTATUS[0]}'
 
-## k6.load: Run the k6 Chronos load test with OTLP output
+## k6.load: Run the k6 Chronos load test with OTLP output. Use K6_FULL_LOAD=true for the 1,000 rps full load profile
 k6.load:
-	$(call pp,running k6 load test with OTLP endpoint $(K6_OTEL_GRPC_EXPORTER_ENDPOINT)...)
+	$(call pp,running k6 $(K6_LOAD_PROFILE) test with OTLP endpoint $(K6_OTEL_GRPC_EXPORTER_ENDPOINT)...)
 	mkdir -p "$(K6_LOG_DIR)"
 	$(K6_DOCKER_RUN) \
-		-e K6_LOAD_RATE=$${K6_LOAD_RATE:-1000} \
-		-e K6_LOAD_DURATION=$${K6_LOAD_DURATION:-1m} \
-		-e K6_LOAD_CONSUME_DURATION=$${K6_LOAD_CONSUME_DURATION:-2m} \
+		-e K6_LOAD_RATE=$${K6_LOAD_RATE:-$(K6_LOAD_DEFAULT_RATE)} \
+		-e K6_LOAD_DURATION=$${K6_LOAD_DURATION:-$(K6_LOAD_DEFAULT_DURATION)} \
+		-e K6_LOAD_CONSUME_DURATION=$${K6_LOAD_CONSUME_DURATION:-$(K6_LOAD_DEFAULT_CONSUME_DURATION)} \
 		-e K6_LOAD_DELAY_MS=$${K6_LOAD_DELAY_MS:-1000} \
 		-e K6_LOAD_EXPECTED_MESSAGES=$${K6_LOAD_EXPECTED_MESSAGES:-} \
 		--entrypoint bash $(K6_IMAGE) -lc 'k6 run --out opentelemetry /scripts/load.js 2>&1 | tee -a /data/lgtm/logs/k6-load.jsonl; exit $${PIPESTATUS[0]}'
