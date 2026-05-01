@@ -60,16 +60,15 @@ impl MessageProcessor {
         match readied_by_column {
             Some(id) => {
                 headers.insert("readied_by".to_string(), id);
-                if let Ok(id) = self
+                if let Ok(published) = self
                     .producer
                     .kafka_publish(updated_row.message_value.to_string(), Some(headers), updated_row.message_key.to_string())
                     .await
                 {
                     // msg_jitter: difference between actual publish time and client-requested deadline.
                     // Floored at 0 to guard against clock skew producing negative jitter.
-                    let jitter_secs = (Utc::now() - deadline).num_milliseconds().max(0) as f64 / 1000.0;
-                    self.metrics.observe_jitter(jitter_secs);
-                    Ok(id)
+                    self.metrics.observe_jitter(jitter_seconds(published.timestamp, deadline));
+                    Ok(published.id)
                 } else {
                     Err("error occurred while publishing".to_string())
                 }
@@ -174,8 +173,13 @@ impl MessageProcessor {
     }
 }
 
+fn jitter_seconds(published_at: chrono::DateTime<Utc>, deadline: chrono::DateTime<Utc>) -> f64 {
+    (published_at - deadline).num_milliseconds().max(0) as f64 / 1000.0
+}
+
 #[cfg(test)]
 mod tests {
+    use super::jitter_seconds;
     use crate::metrics::ChronosMetrics;
 
     #[test]
@@ -184,6 +188,22 @@ mod tests {
         let deadline = Utc::now() - Duration::milliseconds(300);
         let jitter_ms = (Utc::now() - deadline).num_milliseconds().max(0);
         assert!(jitter_ms >= 300, "jitter should be at least 300ms when deadline was 300ms ago");
+    }
+
+    #[test]
+    fn test_jitter_seconds_converts_milliseconds_to_seconds() {
+        use chrono::{Duration, Utc};
+        let deadline = Utc::now();
+        let published_at = deadline + Duration::milliseconds(300);
+        assert!((jitter_seconds(published_at, deadline) - 0.3).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn test_jitter_seconds_floors_clock_skew_at_zero() {
+        use chrono::{Duration, Utc};
+        let deadline = Utc::now();
+        let published_at = deadline - Duration::milliseconds(300);
+        assert_eq!(jitter_seconds(published_at, deadline), 0.0);
     }
 
     #[test]

@@ -47,7 +47,7 @@ async fn main() {
     let producer = KafkaProducer::new(&kafka_config);
 
     match producer.kafka_publish(payload, Some(headers), msg_id.clone()).await {
-        Ok(id) => println!("✓ Published successfully (returned id: {})", id),
+        Ok(published) => println!("✓ Published successfully (returned id: {})", published.id),
         Err(e) => {
             eprintln!("✗ Failed to publish: {}", e);
             std::process::exit(1);

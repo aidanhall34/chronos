@@ -3,6 +3,7 @@ use std::time::Duration;
 
 use crate::utils::util::into_headers;
 use crate::{kafka::errors::KafkaAdapterError, utils::util::CHRONOS_ID};
+use chrono::{DateTime, Utc};
 use rdkafka::producer::{FutureProducer, FutureRecord};
 
 use super::config::KafkaConfig;
@@ -16,6 +17,11 @@ pub struct KafkaProducer {
     topic: String,
 }
 
+pub struct PublishedMessage {
+    pub id: String,
+    pub timestamp: DateTime<Utc>,
+}
+
 impl KafkaProducer {
     pub fn new(config: &KafkaConfig) -> Self {
         // rdlibkafka goes infinitely trying to connect to kafka broker
@@ -25,11 +31,12 @@ impl KafkaProducer {
         Self { producer, topic }
     }
     #[instrument(skip_all, fields(topic = %self.topic))]
-    pub async fn kafka_publish(&self, message: String, headers: Option<HashMap<String, String>>, key: String) -> Result<String, KafkaAdapterError> {
+    pub async fn kafka_publish(&self, message: String, headers: Option<HashMap<String, String>>, key: String) -> Result<PublishedMessage, KafkaAdapterError> {
         // Only because never expecting wrong headers to reach here
         let unwrap_header = &headers.unwrap_or_default();
 
         let o_header = into_headers(unwrap_header);
+        let published_at = Utc::now();
         // println!("headers {:?}", o_header);
         // println!("headers {:?} headers--{:?}", &headers["chronosId)"].to_string(), &headers["chronosDeadline)"].to_string());
 
@@ -39,11 +46,15 @@ impl KafkaProducer {
                 FutureRecord::to(self.topic.as_str())
                     .payload(message.as_str())
                     .key(key.as_str())
-                    .headers(o_header),
+                    .headers(o_header)
+                    .timestamp(published_at.timestamp_millis()),
                 Duration::from_secs(0),
             )
             .await
             .map_err(|(kafka_error, _record)| KafkaAdapterError::PublishMessage(kafka_error, "message publishing failed".to_string()))?;
-        Ok(unwrap_header[CHRONOS_ID].to_string())
+        Ok(PublishedMessage {
+            id: unwrap_header[CHRONOS_ID].to_string(),
+            timestamp: published_at,
+        })
     }
 }
