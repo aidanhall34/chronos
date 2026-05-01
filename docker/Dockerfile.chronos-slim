@@ -11,7 +11,7 @@
 # To use this image in Docker Compose, change the chronos service to:
 #   build:
 #     context: .
-#     dockerfile: Dockerfile.chronos-slim
+#     dockerfile: docker/Dockerfile.chronos-slim
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Build stage

@@ -5,7 +5,7 @@ services:
   chronos-pg-migrations:
     build:
       context: ../..
-      dockerfile: Dockerfile.chronos-pg-migrations
+      dockerfile: docker/Dockerfile.chronos-pg-migrations
     environment:
       PG_HOST: postgres
       PG_PORT: "5432"
@@ -22,7 +22,7 @@ services:
   chronos:
     build:
       context: ../..
-      dockerfile: Dockerfile.chronos
+      dockerfile: docker/Dockerfile.chronos
     ports:
       - "9091:9091"
     environment:

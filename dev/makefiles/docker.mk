@@ -8,6 +8,8 @@ COMPOSE_BACKEND_FILE := $(if $(filter lgtm,$(BACKEND)),$(COMPOSE_FILE_LGTM),$(CO
 DOCKER_COMPOSE := docker compose --project-name $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE_BASE) -f $(COMPOSE_BACKEND_FILE)
 DOCKER_COMPOSE_JAEGER := docker compose --project-name $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE_BASE) -f $(COMPOSE_FILE_JAEGER)
 DOCKER_COMPOSE_LGTM := docker compose --project-name $(COMPOSE_PROJECT_NAME) -f $(COMPOSE_FILE_BASE) -f $(COMPOSE_FILE_LGTM)
+CHRONOS_IMAGE ?= chronos:local
+CHRONOS_MIGRATIONS_IMAGE ?= chronos-pg-migrations:local
 
 ## up: Build and start Chronos, dependencies, and observability. Use make up lgtm or BACKEND=lgtm for LGTM
 up:
@@ -24,6 +26,19 @@ down:
 docker.config:
 	$(DOCKER_COMPOSE) config
 
+## docker.build: Build the Chronos and PostgreSQL migration container images
+docker.build: docker.build.chronos docker.build.migrations
+
+## docker.build.chronos: Build the Chronos container image
+docker.build.chronos:
+	$(call pp,building Chronos container image $(CHRONOS_IMAGE)...)
+	docker build -f docker/Dockerfile.chronos -t $(CHRONOS_IMAGE) .
+
+## docker.build.migrations: Build the PostgreSQL migration container image
+docker.build.migrations:
+	$(call pp,building Chronos PostgreSQL migration container image $(CHRONOS_MIGRATIONS_IMAGE)...)
+	docker build -f docker/Dockerfile.chronos-pg-migrations -t $(CHRONOS_MIGRATIONS_IMAGE) .
+
 ## docker.up: Legacy alias for make up
 docker.up: up
 
@@ -33,4 +48,4 @@ docker.down: down
 jaeger lgtm:
 	@:
 
-.PHONY: up down docker.config docker.up docker.down jaeger lgtm
+.PHONY: up down docker.config docker.build docker.build.chronos docker.build.migrations docker.up docker.down jaeger lgtm

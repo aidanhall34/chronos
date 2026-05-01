@@ -23,6 +23,8 @@ Use `make up` to build and start Chronos with PostgreSQL, Kafka, Jaeger, and the
 
 Use `make up lgtm` or `make up BACKEND=lgtm` to start the same Chronos stack with the Grafana LGTM backend instead of Jaeger.
 
+Use `make docker.build` to build the Chronos and PostgreSQL migration container images without starting the Compose stack.
+
 Use `make down` to stop the running stack.
 
 ## ENV vars
@@ -91,4 +93,3 @@ make lgtm.validate
 Two images are published for each [RELEASE]( `https://github.com/kindredgroup/chronos/pkgs/container/chronos`)
 - migrations image 
 - chornos image 
-
