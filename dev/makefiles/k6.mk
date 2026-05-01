@@ -10,7 +10,7 @@ K6_DOCKER_NETWORK ?= $(if $(and $(GITHUB_ACTIONS),$(if $(ACT),,1)),bridge,chrono
 K6_FULL_LOAD ?= false
 K6_LOAD_DEFAULT_RATE := $(if $(filter true 1 yes,$(K6_FULL_LOAD)),1000,100)
 K6_LOAD_DEFAULT_DURATION := $(if $(filter true 1 yes,$(K6_FULL_LOAD)),1m,1m)
-K6_LOAD_DEFAULT_CONSUME_DURATION := $(if $(filter true 1 yes,$(K6_FULL_LOAD)),2m,30s)
+K6_LOAD_DEFAULT_CONSUME_DURATION := $(if $(filter true 1 yes,$(K6_FULL_LOAD)),2m,90s)
 K6_LOAD_PROFILE := $(if $(filter true 1 yes,$(K6_FULL_LOAD)),full load,load)
 K6_COMMON_ENV := \
 	-e KAFKA_BROKERS=$${KAFKA_BROKERS:-kafka:9092} \
@@ -43,6 +43,8 @@ k6.load:
 		-e K6_LOAD_DURATION=$${K6_LOAD_DURATION:-$(K6_LOAD_DEFAULT_DURATION)} \
 		-e K6_LOAD_CONSUME_DURATION=$${K6_LOAD_CONSUME_DURATION:-$(K6_LOAD_DEFAULT_CONSUME_DURATION)} \
 		-e K6_LOAD_DELAY_MS=$${K6_LOAD_DELAY_MS:-1000} \
+		-e K6_LOAD_IMMEDIATE_DELAY_MS=$${K6_LOAD_IMMEDIATE_DELAY_MS:--1000} \
+		-e K6_LOAD_IMMEDIATE_RATIO=$${K6_LOAD_IMMEDIATE_RATIO:-0.5} \
 		-e K6_LOAD_EXPECTED_MESSAGES=$${K6_LOAD_EXPECTED_MESSAGES:-} \
 		--entrypoint bash $(K6_IMAGE) -lc 'k6 run --out opentelemetry /scripts/load.js 2>&1 | tee -a /data/lgtm/logs/k6-load.jsonl; exit $${PIPESTATUS[0]}'
 

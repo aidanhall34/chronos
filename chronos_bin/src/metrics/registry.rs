@@ -5,6 +5,8 @@ use opentelemetry::global;
 use opentelemetry::metrics::{Counter as OtlpCounter, Histogram as OtlpHistogram, Unit};
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::metrics::reader::{AggregationSelector, DefaultAggregationSelector};
+use opentelemetry_sdk::metrics::{Aggregation, InstrumentKind};
 use prometheus::{histogram_opts, opts, CounterVec as PromCounterVec, HistogramVec as PromHistogramVec, Registry};
 
 use crate::metrics::generated::{MetricDefinition, MetricId, MetricKind, METRIC_DEFINITIONS};
@@ -223,6 +225,33 @@ impl MetricsBackend for PrometheusMetricsBackend {
     fn shutdown(&self) {}
 }
 
+struct ChronosAggregationSelector;
+
+impl AggregationSelector for ChronosAggregationSelector {
+    fn aggregation(&self, kind: InstrumentKind) -> Aggregation {
+        if kind != InstrumentKind::Histogram {
+            return DefaultAggregationSelector::new().aggregation(kind);
+        }
+
+        Aggregation::ExplicitBucketHistogram {
+            boundaries: otlp_histogram_boundaries(),
+            record_min_max: true,
+        }
+    }
+}
+
+fn otlp_histogram_boundaries() -> Vec<f64> {
+    let mut boundaries = METRIC_DEFINITIONS
+        .iter()
+        .filter(|definition| definition.kind.is_histogram())
+        .filter_map(|definition| definition.buckets)
+        .flat_map(|buckets| buckets.iter().copied())
+        .collect::<Vec<_>>();
+    boundaries.sort_by(f64::total_cmp);
+    boundaries.dedup();
+    boundaries
+}
+
 struct OtlpMetricsBackend {
     provider: opentelemetry_sdk::metrics::MeterProvider,
     counters: HashMap<MetricId, OtlpCounter<u64>>,
@@ -238,6 +267,7 @@ impl OtlpMetricsBackend {
         let provider = opentelemetry_otlp::new_pipeline()
             .metrics(opentelemetry::runtime::Tokio)
             .with_exporter(exporter)
+            .with_aggregation_selector(ChronosAggregationSelector)
             .build()?;
 
         global::set_meter_provider(provider.clone());
@@ -398,6 +428,16 @@ mod tests {
         let output = metrics.render_prometheus().unwrap();
 
         assert!(output.contains("chronos_msg_jitter_bucket{le=\"0.5\"} 1"));
+    }
+
+    #[test]
+    fn otlp_histograms_use_generated_second_boundaries() {
+        let boundaries = otlp_histogram_boundaries();
+
+        assert!(boundaries.contains(&0.5));
+        assert!(boundaries.contains(&2.048));
+        assert!(boundaries.contains(&5.0));
+        assert!(boundaries.windows(2).all(|window| window[0] < window[1]));
     }
 
     #[test]
