@@ -1,4 +1,4 @@
-// Generated from examples/weaver/registry/chronos/metrics.yaml by OpenTelemetry Weaver.
+// Generated from dev/weaver/production/registry/chronos/metrics.yaml by OpenTelemetry Weaver.
 // Do not edit by hand.
 
 #[derive(Clone, Copy, Debug, Eq, Hash, PartialEq)]

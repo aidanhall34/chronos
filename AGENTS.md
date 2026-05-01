@@ -117,6 +117,6 @@ When making tradeoffs, record the chosen path and the reason. Avoid relying on c
 
 - Chronos treats Kafka message bodies opaquely and forwards messages after delay; avoid adding application-level assumptions about payload shape.
 - The README describes at-least-once delivery semantics. Preserve behavior that supports persistence, recovery from suspected node failure, and duplicate-safe processing.
-- Metrics work on the `feat/prom_metrics` branch currently includes a Prometheus endpoint and metric-family checks in the integration script. Changes to metrics should preserve unit tests for registry output and integration checks for expected metric families.
+- Metrics work on the `feat/prom_metrics` branch currently includes a Prometheus endpoint and metric-family checks in the integration script. Production Weaver inputs live under `dev/weaver/production`; example Weaver inputs live under `examples/weaver` and are generated only by explicit example recipes. Changes to metrics should preserve unit tests for registry output and integration checks for expected metric families.
 - Local development commonly uses `.env` copied from [.env.example](.env.example) through `make setup` or `make withenv`.
 - Docker Compose files live in `dev/docker-compose`. `make up` starts Chronos with PostgreSQL, Kafka, Jaeger, and the OpenTelemetry Collector by default; `make up lgtm` uses the LGTM backend.

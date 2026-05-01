@@ -1,15 +1,21 @@
 EXPORTER ?= prom
 WEAVER_VERSION ?= 0.23.0
 WEAVER_IMAGE ?= otel/weaver:v$(WEAVER_VERSION)
-WEAVER_REGISTRY ?= examples/weaver/registry
-WEAVER_TEMPLATES ?= examples/weaver/templates
-WEAVER_GENERATED_DIR ?= chronos_bin/src/metrics/generated
+WEAVER_PRODUCTION_REGISTRY ?= dev/weaver/production/registry
+WEAVER_PRODUCTION_TEMPLATES ?= dev/weaver/production/templates
+WEAVER_PRODUCTION_RUST_OUT ?= chronos_bin/src/metrics/generated
+WEAVER_PRODUCTION_DOCS_OUT ?= docs
+WEAVER_SCHEMA_OUT ?= docs/schema
+WEAVER_EXAMPLE_REGISTRY ?= examples/weaver/registry
+WEAVER_EXAMPLE_TEMPLATES ?= examples/weaver/templates
+WEAVER_EXAMPLE_OUT ?= examples/weaver/generated
+WEAVER_REGISTRY ?= $(WEAVER_PRODUCTION_REGISTRY)
 WEAVER_LIVE_CHECK_PORT ?= 4319
 WEAVER_LIVE_CHECK_ADMIN_PORT ?= 4320
 WEAVER_LIVE_CHECK_OUT ?= /tmp/chronos-weaver-live-check
 
 ## build: Build Rust binaries
-build: weaver.generate
+build: weaver.production.generate
 	$(call pp,build rust...)
 	cargo build
 
@@ -55,30 +61,61 @@ metrics.mock:
 		*) echo "unsupported EXPORTER=$(EXPORTER); use EXPORTER=prom or EXPORTER=otlp" >&2; exit 2 ;; \
 	esac
 
-## weaver.check: Validate the Chronos Weaver registry
-weaver.check:
+## weaver.production.check: Validate the production Chronos Weaver registry
+weaver.production.check:
 	$(call pp,check Weaver registry with $(WEAVER_IMAGE)...)
-	docker run --rm -v "$(PWD):/work" -w /work $(WEAVER_IMAGE) registry check -r $(WEAVER_REGISTRY)
+	docker run --rm -v "$(PWD):/work" -w /work $(WEAVER_IMAGE) registry check -r $(WEAVER_PRODUCTION_REGISTRY)
 
-## weaver.generate.rust: Generate Rust metric definitions with Weaver
-weaver.generate.rust:
+## weaver.production.generate.rust: Generate production Rust metric definitions with Weaver
+weaver.production.generate.rust:
 	$(call pp,generate Rust metric definitions with $(WEAVER_IMAGE)...)
-	docker run --rm -v "$(PWD):/work" -w /work $(WEAVER_IMAGE) registry generate -r $(WEAVER_REGISTRY) --templates $(WEAVER_TEMPLATES) rust $(WEAVER_GENERATED_DIR)
-	rustfmt --config-path rustfmt.toml $(WEAVER_GENERATED_DIR)/chronos_metric_definitions.rs
+	docker run --rm -v "$(PWD):/work" -w /work $(WEAVER_IMAGE) registry generate -r $(WEAVER_PRODUCTION_REGISTRY) --templates $(WEAVER_PRODUCTION_TEMPLATES) rust $(WEAVER_PRODUCTION_RUST_OUT)
+	rustfmt --config-path rustfmt.toml $(WEAVER_PRODUCTION_RUST_OUT)/chronos_metric_definitions.rs
 
-## weaver.generate.markdown: Generate Chronos metrics markdown docs with Weaver
-weaver.generate.markdown:
+## weaver.production.generate.docs: Generate production Chronos metrics docs with Weaver
+weaver.production.generate.docs:
 	$(call pp,generate metrics markdown docs with $(WEAVER_IMAGE)...)
-	docker run --rm -v "$(PWD):/work" -w /work $(WEAVER_IMAGE) registry generate -r $(WEAVER_REGISTRY) --templates $(WEAVER_TEMPLATES) markdown $(WEAVER_GENERATED_DIR)
+	docker run --rm -v "$(PWD):/work" -w /work $(WEAVER_IMAGE) registry generate -r $(WEAVER_PRODUCTION_REGISTRY) --templates $(WEAVER_PRODUCTION_TEMPLATES) markdown $(WEAVER_PRODUCTION_DOCS_OUT)
 
-## weaver.generate.json-schema: Generate Weaver resolved-registry JSON schema
-weaver.generate.json-schema:
+## weaver.production.generate.schema: Generate production Weaver resolved-registry JSON schema
+weaver.production.generate.schema:
 	$(call pp,generate Weaver JSON schema with $(WEAVER_IMAGE)...)
-	mkdir -p $(WEAVER_GENERATED_DIR)
-	docker run --rm -v "$(PWD):/work" -w /work $(WEAVER_IMAGE) registry json-schema -o $(WEAVER_GENERATED_DIR)/resolved-registry.schema.json
+	mkdir -p $(WEAVER_SCHEMA_OUT)
+	docker run --rm -v "$(PWD):/work" -w /work $(WEAVER_IMAGE) registry json-schema -o $(WEAVER_SCHEMA_OUT)/resolved-registry.schema.json
 
-## weaver.generate: Generate all Weaver artifacts
-weaver.generate: weaver.generate.rust weaver.generate.markdown weaver.generate.json-schema
+## weaver.production.generate: Generate production Weaver Rust, docs, and schema artifacts
+weaver.production.generate: weaver.production.generate.rust weaver.production.generate.docs weaver.production.generate.schema
+
+## weaver.example.check: Validate the example Chronos Weaver registry
+weaver.example.check:
+	$(call pp,check example Weaver registry with $(WEAVER_IMAGE)...)
+	docker run --rm -v "$(PWD):/work" -w /work $(WEAVER_IMAGE) registry check -r $(WEAVER_EXAMPLE_REGISTRY)
+
+## weaver.example.generate.rust: Generate example Rust metric definitions with Weaver
+weaver.example.generate.rust:
+	$(call pp,generate example Rust metric definitions with $(WEAVER_IMAGE)...)
+	docker run --rm -v "$(PWD):/work" -w /work $(WEAVER_IMAGE) registry generate -r $(WEAVER_EXAMPLE_REGISTRY) --templates $(WEAVER_EXAMPLE_TEMPLATES) rust $(WEAVER_EXAMPLE_OUT)
+	rustfmt --config-path rustfmt.toml $(WEAVER_EXAMPLE_OUT)/chronos_metric_definitions.rs
+
+## weaver.example.generate.docs: Generate example Chronos metrics docs with Weaver
+weaver.example.generate.docs:
+	$(call pp,generate example metrics markdown docs with $(WEAVER_IMAGE)...)
+	docker run --rm -v "$(PWD):/work" -w /work $(WEAVER_IMAGE) registry generate -r $(WEAVER_EXAMPLE_REGISTRY) --templates $(WEAVER_EXAMPLE_TEMPLATES) markdown $(WEAVER_EXAMPLE_OUT)
+
+## weaver.example.generate.schema: Generate example Weaver resolved-registry JSON schema
+weaver.example.generate.schema:
+	$(call pp,generate example Weaver JSON schema with $(WEAVER_IMAGE)...)
+	mkdir -p $(WEAVER_EXAMPLE_OUT)
+	docker run --rm -v "$(PWD):/work" -w /work $(WEAVER_IMAGE) registry json-schema -o $(WEAVER_EXAMPLE_OUT)/resolved-registry.schema.json
+
+## weaver.example.generate: Explicitly generate example Weaver Rust, docs, and schema artifacts
+weaver.example.generate: weaver.example.generate.rust weaver.example.generate.docs weaver.example.generate.schema
+
+## weaver.check: Validate the production Chronos Weaver registry
+weaver.check: weaver.production.check
+
+## weaver.generate: Generate production Weaver artifacts
+weaver.generate: weaver.production.generate
 
 ## weaver.live-check: Run Weaver live-check against the OTLP metrics mock
 weaver.live-check:
@@ -114,4 +151,4 @@ weaver.live-check:
 	wait "$$live_check_pid"; \
 	find "$(WEAVER_LIVE_CHECK_OUT)" -maxdepth 1 -type f -print
 
-.PHONY: build fmt lint test test.unit pre-commit test.unit.coverage metrics.check metrics.mock weaver.check weaver.generate.rust weaver.generate.markdown weaver.generate.json-schema weaver.generate weaver.live-check
+.PHONY: build fmt lint test test.unit pre-commit test.unit.coverage metrics.check metrics.mock weaver.production.check weaver.production.generate.rust weaver.production.generate.docs weaver.production.generate.schema weaver.production.generate weaver.example.check weaver.example.generate.rust weaver.example.generate.docs weaver.example.generate.schema weaver.example.generate weaver.check weaver.generate weaver.live-check

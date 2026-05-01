@@ -1,6 +1,6 @@
 # Chronos Metrics
 
-Generated from `examples/weaver/registry/chronos/metrics.yaml` by OpenTelemetry Weaver.
+Generated from `dev/weaver/production/registry/chronos/metrics.yaml` by OpenTelemetry Weaver.
 
 | Metric | Prometheus Name | Instrument | Unit | Attributes | Description |
 | --- | --- | --- | --- | --- | --- |

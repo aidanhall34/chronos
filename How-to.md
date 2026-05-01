@@ -77,9 +77,9 @@ make up lgtm
 
 The overlay mounts local override files from `dev/lgtm` for Prometheus, the OpenTelemetry Collector, and Grafana dashboard provisioning. Chronos exposes its Prometheus metrics endpoint with `OTEL_EXPORTER_PROMETHEUS_HOST` and `OTEL_EXPORTER_PROMETHEUS_PORT`; when run from Docker Compose the endpoint is `chronos:9091`.
 
-Chronos metrics are generated from the OpenTelemetry Weaver registry in `examples/weaver/registry/chronos/metrics.yaml` into `chronos_bin/src/metrics/generated`. `OTEL_METRICS_EXPORTER=prometheus` is the default and exposes `/metrics` with the `chronos_` Prometheus namespace, for example `chronos_msg_jitter`. `OTEL_METRICS_EXPORTER=otlp` records the same generated metric IDs through the OTLP gRPC metrics exporter.
+Chronos production metrics are generated from the OpenTelemetry Weaver registry in `dev/weaver/production/registry/chronos/metrics.yaml`. Rust definitions are generated into `chronos_bin/src/metrics/generated`, Markdown docs into `docs/chronos_metrics.md`, and the resolved registry schema into `docs/schema/resolved-registry.schema.json`. `OTEL_METRICS_EXPORTER=prometheus` is the default and exposes `/metrics` with the `chronos_` Prometheus namespace, for example `chronos_msg_jitter`. `OTEL_METRICS_EXPORTER=otlp` records the same generated metric IDs through the OTLP gRPC metrics exporter.
 
-`make build` runs `make weaver.generate` before compiling, which refreshes the generated Rust definitions, Markdown metric docs, and resolved registry JSON schema.
+`make build` runs `make weaver.production.generate` before compiling, which refreshes the production Rust definitions, Markdown metric docs, and resolved registry JSON schema. Example Weaver artifacts are generated only when explicitly requested with `make weaver.example.generate`.
 
 Validate the LGTM configuration files with:
 
@@ -91,5 +91,4 @@ make lgtm.validate
 Two images are published for each [RELEASE]( `https://github.com/kindredgroup/chronos/pkgs/container/chronos`)
 - migrations image 
 - chornos image 
-
 
