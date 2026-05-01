@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build binary image stage
-        run: docker build --target builder -f Dockerfile.chronos-slim -t chronos-binary-builder:${{ github.sha }} .
+        run: docker build --target builder -f docker/Dockerfile.chronos-slim -t chronos-binary-builder:${{ github.sha }} .
 
       - name: Extract binary
         run: |

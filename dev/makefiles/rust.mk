@@ -102,6 +102,7 @@ weaver.live-check:
 	cargo build --package prom_otlp_mock_runner; \
 	rm -rf "$(WEAVER_LIVE_CHECK_OUT)"; \
 	mkdir -p "$(WEAVER_LIVE_CHECK_OUT)"; \
+	chmod 0777 "$(WEAVER_LIVE_CHECK_OUT)"; \
 	docker run --rm --network host \
 		-v "$(PWD):/work" \
 		-v "$(WEAVER_LIVE_CHECK_OUT):/out" \

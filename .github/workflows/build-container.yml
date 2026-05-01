@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build regular container
-        run: docker build -f Dockerfile.chronos -t chronos:${{ github.sha }} .
+        run: docker build -f docker/Dockerfile.chronos -t chronos:${{ github.sha }} .
 
       - name: Build scratch container
-        run: docker build -f Dockerfile.chronos-slim -t chronos-scratch:${{ github.sha }} .
+        run: docker build -f docker/Dockerfile.chronos-slim -t chronos-scratch:${{ github.sha }} .
