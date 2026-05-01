@@ -23,6 +23,8 @@ services:
     build:
       context: ../..
       dockerfile: docker/Dockerfile.chronos
+    cpus: 2
+    mem_limit: 2g
     ports:
       - "9091:9091"
     environment:

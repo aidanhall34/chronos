@@ -21,7 +21,7 @@ K6_COMMON_ENV := \
 	-e K6_OTEL_GRPC_EXPORTER_INSECURE=$${K6_OTEL_GRPC_EXPORTER_INSECURE:-true} \
 	-e K6_OTEL_GRPC_EXPORTER_ENDPOINT=$(K6_OTEL_GRPC_EXPORTER_ENDPOINT) \
 	-e K6_RUN_ID=$(K6_RUN_ID)
-K6_DOCKER_RUN := docker run --rm --network $(K6_DOCKER_NETWORK) --add-host=host.docker.internal:host-gateway -v "$(PWD)/dev/k6:/scripts:ro" -v "$(K6_LOG_DIR):/data/lgtm/logs" $(K6_COMMON_ENV)
+K6_DOCKER_RUN := docker run --rm --cpus 1 --memory 1g --network $(K6_DOCKER_NETWORK) --add-host=host.docker.internal:host-gateway -v "$(PWD)/dev/k6:/scripts:ro" -v "$(K6_LOG_DIR):/data/lgtm/logs" $(K6_COMMON_ENV)
 
 ## k6.build: Build the custom k6 image with xk6-kafka
 k6.build:

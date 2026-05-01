@@ -79,6 +79,10 @@ make up lgtm
 
 The overlay mounts local override files from `dev/lgtm` for Prometheus, the OpenTelemetry Collector, and Grafana dashboard provisioning. Chronos exposes its Prometheus metrics endpoint with `OTEL_EXPORTER_PROMETHEUS_HOST` and `OTEL_EXPORTER_PROMETHEUS_PORT`; when run from Docker Compose the endpoint is `chronos:9091`.
 
+The LGTM overlay also starts local infrastructure exporters for container, PostgreSQL, Kafka, and SQL-derived database metrics. Prometheus scrapes cAdvisor, postgres_exporter, KMinion, and sql_exporter from `dev/lgtm/prometheus.yaml`; the SQL exporter emits `chronos_rows`, the current row count of the Chronos `hanger` table. The exporter-specific configuration lives in `dev/lgtm/kminion.yaml` and `dev/lgtm/sql_exporter.yaml`.
+
+The local Compose stack limits the Chronos container to 2 CPUs and 2 GiB of memory. k6 runner containers launched by `make k6.contract` and `make k6.load` are limited to 1 CPU and 1 GiB of memory.
+
 Chronos production metrics are generated from the OpenTelemetry Weaver registry in `dev/weaver/production/registry/chronos/metrics.yaml`. Rust definitions are generated into `chronos_bin/src/metrics/generated`, Markdown docs into `docs/chronos_metrics.md`, and the resolved registry schema into `docs/schema/resolved-registry.schema.json`. `OTEL_METRICS_EXPORTER=prometheus` is the default and exposes `/metrics` with the `chronos_` Prometheus namespace, for example `chronos_msg_jitter`. `OTEL_METRICS_EXPORTER=otlp` records the same generated metric IDs through the OTLP gRPC metrics exporter.
 
 `make build` runs `make weaver.generate WEAVER_TARGET=production` before compiling, which refreshes the production Rust definitions, Markdown metric docs, and resolved registry JSON schema. `WEAVER_TARGET` defaults to `production`; generate example Weaver artifacts explicitly with `make weaver.generate WEAVER_TARGET=example`.

@@ -1,0 +1,24 @@
+global:
+  scrape_timeout_offset: 500ms
+  min_interval: 15s
+  max_connections: 2
+  max_idle_connections: 2
+
+target:
+  name: chronos_db
+  data_source_name: "postgresql://admin:admin@postgres:5432/chronos_db?sslmode=disable"
+  collectors:
+    - chronos
+  enable_ping: true
+
+collectors:
+  - collector_name: chronos
+    metrics:
+      - metric_name: chronos_rows
+        type: gauge
+        help: "Number of rows stored in the Chronos hanger table."
+        values:
+          - rows
+        query: |
+          SELECT count(*)::double precision AS rows
+          FROM hanger;

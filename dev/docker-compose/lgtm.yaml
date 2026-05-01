@@ -41,6 +41,15 @@ services:
       timeout: 10s
       retries: 5
       start_period: 30s
+    depends_on:
+      cadvisor:
+        condition: service_healthy
+      postgres-exporter:
+        condition: service_healthy
+      kminion:
+        condition: service_healthy
+      sql-exporter:
+        condition: service_healthy
     volumes:
       - ../lgtm/prometheus.yaml:/otel-lgtm/prometheus.yaml:ro
       - ../lgtm/otelcol-contrib.yaml:/otel-lgtm/otelcol-config.yaml:ro
@@ -49,5 +58,89 @@ services:
       - ../lgtm/runtime-logs:/data/lgtm/logs
       - ../lgtm/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/chronos.yaml:ro
       - ../dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards/chronos:ro
+    networks:
+      - chronos
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.52.1
+    container_name: cadvisor
+    command:
+      - --docker_only=true
+      - --housekeeping_interval=10s
+      - --store_container_labels=false
+    privileged: true
+    devices:
+      - /dev/kmsg:/dev/kmsg
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/healthz >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - chronos
+
+  postgres-exporter:
+    image: quay.io/prometheuscommunity/postgres-exporter:v0.19.1
+    container_name: postgres-exporter
+    environment:
+      DATA_SOURCE_URI: postgres:5432/chronos_db?sslmode=disable
+      DATA_SOURCE_USER: admin
+      DATA_SOURCE_PASS: admin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9187/metrics >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - chronos
+
+  kminion:
+    image: redpandadata/kminion:v2.2.14
+    container_name: kminion
+    environment:
+      CONFIG_FILEPATH: /etc/kminion/kminion.yaml
+    depends_on:
+      kafka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/metrics >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    volumes:
+      - ../lgtm/kminion.yaml:/etc/kminion/kminion.yaml:ro
+    networks:
+      - chronos
+
+  sql-exporter:
+    image: burningalchemist/sql_exporter:0.18.3
+    container_name: sql-exporter
+    command:
+      - --config.file=/etc/sql_exporter/sql_exporter.yaml
+    depends_on:
+      postgres:
+        condition: service_healthy
+      chronos-pg-migrations:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:9399/metrics >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    volumes:
+      - ../lgtm/sql_exporter.yaml:/etc/sql_exporter/sql_exporter.yaml:ro
     networks:
       - chronos
