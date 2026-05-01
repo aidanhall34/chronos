@@ -81,7 +81,7 @@ The overlay mounts local override files from `dev/lgtm` for Prometheus, the Open
 
 Chronos production metrics are generated from the OpenTelemetry Weaver registry in `dev/weaver/production/registry/chronos/metrics.yaml`. Rust definitions are generated into `chronos_bin/src/metrics/generated`, Markdown docs into `docs/chronos_metrics.md`, and the resolved registry schema into `docs/schema/resolved-registry.schema.json`. `OTEL_METRICS_EXPORTER=prometheus` is the default and exposes `/metrics` with the `chronos_` Prometheus namespace, for example `chronos_msg_jitter`. `OTEL_METRICS_EXPORTER=otlp` records the same generated metric IDs through the OTLP gRPC metrics exporter.
 
-`make build` runs `make weaver.production.generate` before compiling, which refreshes the production Rust definitions, Markdown metric docs, and resolved registry JSON schema. Example Weaver artifacts are generated only when explicitly requested with `make weaver.example.generate`.
+`make build` runs `make weaver.generate WEAVER_TARGET=production` before compiling, which refreshes the production Rust definitions, Markdown metric docs, and resolved registry JSON schema. `WEAVER_TARGET` defaults to `production`; generate example Weaver artifacts explicitly with `make weaver.generate WEAVER_TARGET=example`.
 
 Validate the LGTM configuration files with:
 
