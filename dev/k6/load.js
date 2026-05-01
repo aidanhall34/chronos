@@ -1,5 +1,6 @@
 import { check, sleep } from "k6";
 import encoding from "k6/encoding";
+import exec from "k6/execution";
 import { Counter, Trend } from "k6/metrics";
 import { Producer, Consumer } from "k6/x/kafka";
 
@@ -11,9 +12,11 @@ const duration = __ENV.K6_LOAD_DURATION || "1m";
 const consumeDuration = __ENV.K6_LOAD_CONSUME_DURATION || "90s";
 const delayedScheduleDelayMs = Number(__ENV.K6_LOAD_DELAY_MS || 1000);
 const immediateScheduleDelayMs = Number(__ENV.K6_LOAD_IMMEDIATE_DELAY_MS || -1000);
-const immediateRatio = clampRatio(Number(__ENV.K6_LOAD_IMMEDIATE_RATIO || 0.5));
+const immediateRatio = clampRatio(Number(__ENV.K6_LOAD_IMMEDIATE_RATIO || 0.1));
 const runId = __ENV.K6_RUN_ID || `load-${Date.now()}`;
 const expectedMessages = Number(__ENV.K6_LOAD_EXPECTED_MESSAGES || Math.floor(rate * durationSeconds(duration)));
+const expectedImmediateMessages = Math.floor(expectedMessages * immediateRatio);
+const expectedDelayedMessages = expectedMessages - expectedImmediateMessages;
 
 const published = new Counter("chronos_messages_published");
 const consumed = new Counter("chronos_messages_consumed");
@@ -48,6 +51,7 @@ export const options = {
     chronos_messages_consumed: [`count>=${expectedMessages}`],
     chronos_output_timestamp_errors: ["count==0"],
     chronos_scheduling_jitter: ["p(99.9)<500"],
+    ...pathThresholds(),
   },
 };
 
@@ -102,13 +106,27 @@ function durationSeconds(value) {
 
 function clampRatio(value) {
   if (Number.isNaN(value)) {
-    return 0.5;
+    return 0.1;
   }
   return Math.min(1, Math.max(0, value));
 }
 
 function shouldPublishImmediate() {
-  return ((__ITER % 100) / 100) < immediateRatio;
+  const spreadBucket = ((exec.scenario.iterationInTest * 9973) % 100) / 100;
+  return spreadBucket < immediateRatio;
+}
+
+function pathThresholds() {
+  const thresholds = {};
+  if (expectedImmediateMessages > 0) {
+    thresholds["chronos_messages_published{chronos_path:immediate}"] = [`count>=${expectedImmediateMessages}`];
+    thresholds["chronos_messages_consumed{chronos_path:immediate}"] = [`count>=${expectedImmediateMessages}`];
+  }
+  if (expectedDelayedMessages > 0) {
+    thresholds["chronos_messages_published{chronos_path:delayed}"] = [`count>=${expectedDelayedMessages}`];
+    thresholds["chronos_messages_consumed{chronos_path:delayed}"] = [`count>=${expectedDelayedMessages}`];
+  }
+  return thresholds;
 }
 
 function bytesToString(value) {
