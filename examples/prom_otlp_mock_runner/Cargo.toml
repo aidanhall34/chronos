@@ -8,8 +8,5 @@ name = "prom_otlp_mock"
 path = "../prom_otlp_mock.rs"
 
 [dependencies]
-opentelemetry.workspace = true
-opentelemetry_sdk.workspace = true
-opentelemetry-otlp.workspace = true
-prometheus.workspace = true
+chronos_bin = { path = "../../chronos_bin" }
 tokio.workspace = true

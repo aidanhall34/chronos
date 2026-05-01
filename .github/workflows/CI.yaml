@@ -20,6 +20,9 @@ jobs:
   test:
     uses: ./.github/workflows/test.yml
 
+  weaver-live-check:
+    uses: ./.github/workflows/weaver-live-check.yml
+
   scan:
     uses: ./.github/workflows/scan.yml
 

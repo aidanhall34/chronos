@@ -1639,10 +1639,7 @@ dependencies = [
 name = "prom_otlp_mock_runner"
 version = "0.0.0"
 dependencies = [
- "opentelemetry",
- "opentelemetry-otlp",
- "opentelemetry_sdk",
- "prometheus",
+ "chronos_bin",
  "tokio",
 ]
 

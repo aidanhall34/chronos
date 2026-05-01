@@ -1,0 +1,30 @@
+name: weaver-live-check
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-weaver-live-check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  weaver-live-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.94
+
+      - name: Install system dependencies
+        run: scripts/ubuntu-setup.sh
+
+      - name: Run Weaver live check
+        run: make weaver.live-check
