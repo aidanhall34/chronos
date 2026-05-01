@@ -1,10 +1,19 @@
 services:
   chronos:
+    command:
+      - sh
+      - -c
+      - /opt/build/chronos >> /data/lgtm/logs/chronos.jsonl 2>&1
     environment:
+      OTEL_METRICS_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: grpc
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://lgtm:4317
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://lgtm:4318/v1/traces
     depends_on:
       lgtm:
         condition: service_healthy
+    volumes:
+      - ../lgtm/runtime-logs:/data/lgtm/logs
 
   lgtm:
     image: grafana/otel-lgtm:0.24.1
@@ -37,6 +46,7 @@ services:
       - ../lgtm/otelcol-contrib.yaml:/otel-lgtm/otelcol-config.yaml:ro
       - ../lgtm/healthcheck.sh:/otel-lgtm/chronos-healthcheck.sh:ro
       - ../lgtm/logging.sh:/otel-lgtm/logging.sh:ro
+      - ../lgtm/runtime-logs:/data/lgtm/logs
       - ../lgtm/dashboards.yaml:/otel-lgtm/grafana/conf/provisioning/dashboards/chronos.yaml:ro
       - ../dashboards:/otel-lgtm/grafana/conf/provisioning/dashboards/chronos:ro
     networks:

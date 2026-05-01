@@ -1,6 +1,7 @@
 /target
 .env
 /healthcheck
+dev/lgtm/runtime-logs/*.jsonl
 
 
 ### Linux ###

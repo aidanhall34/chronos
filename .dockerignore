@@ -5,6 +5,7 @@ target/
 
 .env
 healthcheck/
+dev/lgtm/runtime-logs/
 
 .DS_Store
 *.iml

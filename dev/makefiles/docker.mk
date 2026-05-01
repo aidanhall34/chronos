@@ -26,8 +26,8 @@ down:
 docker.config:
 	$(DOCKER_COMPOSE) config
 
-## docker.build: Build the Chronos and PostgreSQL migration container images
-docker.build: docker.build.chronos docker.build.migrations
+## docker.build: Build the Chronos, PostgreSQL migration, and k6 container images
+docker.build: docker.build.chronos docker.build.migrations k6.build
 
 ## docker.build.chronos: Build the Chronos container image
 docker.build.chronos:

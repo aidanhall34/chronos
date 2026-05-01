@@ -1,0 +1,23 @@
+FROM golang:1.26-bookworm AS build
+
+ARG K6_VERSION=1.7.1
+ARG XK6_KAFKA_VERSION=latest
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential ca-certificates git pkg-config \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN go install go.k6.io/xk6/cmd/xk6@latest
+RUN CGO_ENABLED=1 xk6 build --k6-version "v${K6_VERSION}" \
+    --with "github.com/mostafa/xk6-kafka/v2@${XK6_KAFKA_VERSION}" \
+    --output /tmp/k6
+
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends bash ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY --from=build /tmp/k6 /usr/local/bin/k6
+
+ENTRYPOINT ["k6"]
