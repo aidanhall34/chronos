@@ -36,20 +36,13 @@ Use the repository's Make targets and scripts as the source of truth.
 - Default pre-commit verification:
 
   ```sh
-  sh scripts/pre-commit-checks.sh
-  ```
-
-  This runs:
-
-  ```sh
-  make withenv RECIPE=lint
-  make withenv RECIPE=test.unit
+  make pre-commit
   ```
 
 - Lint-only check:
 
   ```sh
-  make withenv RECIPE=lint
+  make lint
   ```
 
   This runs `cargo check`, `cargo fmt -- --check`, and `cargo clippy --all-targets`.
@@ -57,7 +50,7 @@ Use the repository's Make targets and scripts as the source of truth.
 - Unit tests:
 
   ```sh
-  make withenv RECIPE=test.unit
+  make test
   ```
 
   This runs `cargo test`.
@@ -101,7 +94,7 @@ Document Chronos project conventions, verification commands, and agent
 handoff expectations.
 
 Verification:
-- sh scripts/pre-commit-checks.sh
+- make pre-commit
 
 Model-version: GPT-5
 ```
@@ -125,5 +118,5 @@ When making tradeoffs, record the chosen path and the reason. Avoid relying on c
 - Chronos treats Kafka message bodies opaquely and forwards messages after delay; avoid adding application-level assumptions about payload shape.
 - The README describes at-least-once delivery semantics. Preserve behavior that supports persistence, recovery from suspected node failure, and duplicate-safe processing.
 - Metrics work on the `feat/prom_metrics` branch currently includes a Prometheus endpoint and metric-family checks in the integration script. Changes to metrics should preserve unit tests for registry output and integration checks for expected metric families.
-- Local development commonly uses `.env` copied from [.env.example](.env.example) through `make withenv`.
-- Docker Compose is used for local PostgreSQL, Kafka, Jaeger, and OpenTelemetry dependencies.
+- Local development commonly uses `.env` copied from [.env.example](.env.example) through `make setup` or `make withenv`.
+- Docker Compose files live in `dev/docker-compose`. `make up` starts Chronos with PostgreSQL, Kafka, Jaeger, and the OpenTelemetry Collector by default; `make up lgtm` uses the LGTM backend.

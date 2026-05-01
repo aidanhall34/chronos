@@ -17,9 +17,13 @@ Input messages with headers
 2. Delete any existing .env file, use `make withenv RECIPE=run` 
 
 ## Run Chronos docker image 
-Using [docker-compose](./docker-compose.yml) docker conatiner can host Chronos image with mentioned env variables for Kafka, PG and Chronos configuration variables.
+Using [Docker Compose](./dev/docker-compose/compose.yaml), containers can host Chronos, PostgreSQL, Kafka, and observability backends with the environment variables mentioned below.
 
-Use `make withenv RECIPE=docker.up`
+Use `make up` to build and start Chronos with PostgreSQL, Kafka, Jaeger, and the OpenTelemetry Collector.
+
+Use `make up lgtm` or `make up BACKEND=lgtm` to start the same Chronos stack with the Grafana LGTM backend instead of Jaeger.
+
+Use `make down` to stop the running stack.
 
 ## ENV vars
 All the required configurations for Chronos can be passed in environment variables mentioned below 
@@ -65,13 +69,13 @@ At this time Chronos supports Http protocol based connectivity to the Otel colle
 |   OTEL_EXPORTER_OTLP_PROTOCOL|"http/json"
 
 ### Local Grafana LGTM stack
-Use the Grafana LGTM compose overlay with the main Docker Compose file to run Grafana, Loki, Tempo, Prometheus, Pyroscope, and the OpenTelemetry Collector in one container:
+Use the Grafana LGTM compose overlay to run Grafana, Loki, Tempo, Prometheus, Pyroscope, and the OpenTelemetry Collector in one container:
 
 ```sh
-make lgtm.up
+make up lgtm
 ```
 
-The overlay mounts local override files for Prometheus, the OpenTelemetry Collector, and Grafana dashboard provisioning. Chronos exposes its Prometheus metrics endpoint with `OTEL_EXPORTER_PROMETHEUS_HOST` and `OTEL_EXPORTER_PROMETHEUS_PORT`; when run from `docker-compose.yml` the endpoint is `chronos:9091`.
+The overlay mounts local override files from `dev/lgtm` for Prometheus, the OpenTelemetry Collector, and Grafana dashboard provisioning. Chronos exposes its Prometheus metrics endpoint with `OTEL_EXPORTER_PROMETHEUS_HOST` and `OTEL_EXPORTER_PROMETHEUS_PORT`; when run from Docker Compose the endpoint is `chronos:9091`.
 
 Chronos metrics are generated from the OpenTelemetry Weaver registry in `examples/weaver/registry/chronos/metrics.yaml` into `chronos_bin/src/metrics/generated`. `OTEL_METRICS_EXPORTER=prometheus` is the default and exposes `/metrics` with the `chronos_` Prometheus namespace, for example `chronos_msg_jitter`. `OTEL_METRICS_EXPORTER=otlp` records the same generated metric IDs through the OTLP gRPC metrics exporter.
 
@@ -87,6 +91,5 @@ make lgtm.validate
 Two images are published for each [RELEASE]( `https://github.com/kindredgroup/chronos/pkgs/container/chronos`)
 - migrations image 
 - chornos image 
-
 
 

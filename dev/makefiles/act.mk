@@ -1,6 +1,3 @@
-#!make
-SHELL := /bin/bash
-
 ACT_EVENT ?= push
 ACT_JOB ?= pre-commit
 ACT_RUNNER_IMAGE ?= catthehacker/ubuntu:act-latest
@@ -19,7 +16,7 @@ SBOM_WORKFLOW ?= .github/workflows/sbom.yml
 SBOM_TARGET_TYPE ?= release
 SBOM_TARGET_REF ?= .
 
-.PHONY: act.ci act.ci.job act.pre-commit act.test act.scan act.build-binary act.build-container act.sbom act.sbom.container act.sbom.release
+.PHONY: act.ci act.ci.job act.pre-commit workflow.pre-commit.act act.test act.scan act.build-binary act.build-container act.sbom act.sbom.container act.sbom.release
 
 act.ci:
 	mkdir -p "$(ACT_ARTIFACT_DIR)"
@@ -31,6 +28,9 @@ act.ci.job:
 
 act.pre-commit:
 	act workflow_dispatch -W "$(PRE_COMMIT_WORKFLOW)" $(ACT_FLAGS)
+
+## workflow.pre-commit.act: Run the pre-commit GitHub Actions workflow locally with act
+workflow.pre-commit.act: act.pre-commit
 
 act.test:
 	act workflow_dispatch -W "$(TEST_WORKFLOW)" $(ACT_FLAGS)

@@ -8,7 +8,7 @@
 #     any test fails
 #   - The final stage keeps only the small runtime packages needed by rdkafka
 #
-# To use this image in docker-compose, change the chronos service to:
+# To use this image in Docker Compose, change the chronos service to:
 #   build:
 #     context: .
 #     dockerfile: Dockerfile.chronos-slim

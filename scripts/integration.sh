@@ -9,6 +9,7 @@ set -euo pipefail
 KAFKA_EXT_PORT="${KAFKA_EXT_PORT:-9094}"
 PG_PORT="${PG_PORT:-5432}"
 METRICS_PORT="${OTEL_EXPORTER_PROMETHEUS_PORT:-${METRICS_PORT:-9090}}"
+COMPOSE="docker compose --project-name chronos -f dev/docker-compose/compose.yaml"
 CHRONOS_PID_FILE="/tmp/chronos_integration.pid"
 CHRONOS_LOG="/tmp/chronos_integration.log"
 MAX_WAIT=120   # seconds to wait for each readiness check
@@ -53,15 +54,15 @@ wait_for() {
 
 # ─── 1. start infrastructure ──────────────────────────────────────────────────
 log "Starting infrastructure (postgres + kafka)..."
-docker compose up -d postgres kafka
+${COMPOSE} up -d postgres kafka
 
 # ─── 2. wait for postgres ─────────────────────────────────────────────────────
 wait_for "postgres" \
-    docker compose exec -T postgres pg_isready -U admin -d chronos_db
+    ${COMPOSE} exec -T postgres pg_isready -U admin -d chronos_db
 
 # ─── 3. wait for kafka ────────────────────────────────────────────────────────
 wait_for "kafka" \
-    docker compose exec -T kafka \
+    ${COMPOSE} exec -T kafka \
         /opt/bitnami/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
 
 # ─── 4. run migrations ────────────────────────────────────────────────────────
@@ -129,7 +130,7 @@ ok "Message published"
 # (timeout reached) which is normal when the topic drains before max-messages.
 log "Waiting for message ${MSG_ID} on chronos.out (up to 30s)..."
 FIRED_OUTPUT=$(
-    docker compose exec -T kafka \
+    ${COMPOSE} exec -T kafka \
         /opt/bitnami/kafka/bin/kafka-console-consumer.sh \
         --bootstrap-server localhost:9092 \
         --topic chronos.out \

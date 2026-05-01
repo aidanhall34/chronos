@@ -28,4 +28,4 @@ jobs:
         run: scripts/ubuntu-setup.sh
 
       - name: Run pre-commit checks
-        run: sh scripts/pre-commit-checks.sh
+        run: make pre-commit
