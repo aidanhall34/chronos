@@ -9,12 +9,13 @@ const outputTopic = __ENV.KAFKA_OUT_TOPIC || "chronos.out";
 const rate = Number(__ENV.K6_LOAD_RATE || 100);
 const duration = __ENV.K6_LOAD_DURATION || "1m";
 const consumeDuration = __ENV.K6_LOAD_CONSUME_DURATION || "30s";
-const delayMs = Number(__ENV.K6_LOAD_DELAY_MS || 1000);
+const scheduleDelayMs = Number(__ENV.K6_LOAD_DELAY_MS || 1000);
 const runId = __ENV.K6_RUN_ID || `load-${Date.now()}`;
 const expectedMessages = Number(__ENV.K6_LOAD_EXPECTED_MESSAGES || Math.floor(rate * durationSeconds(duration)));
 
 const published = new Counter("chronos_messages_published");
 const consumed = new Counter("chronos_messages_consumed");
+const timestampErrors = new Counter("chronos_output_timestamp_errors");
 const schedulingJitter = new Trend("chronos_scheduling_jitter", true);
 
 export const options = {
@@ -42,6 +43,7 @@ export const options = {
     dropped_iterations: ["count==0"],
     chronos_messages_published: [`count>=${expectedMessages}`],
     chronos_messages_consumed: [`count>=${expectedMessages}`],
+    chronos_output_timestamp_errors: ["count==0"],
     chronos_scheduling_jitter: ["p(99.9)<500"],
   },
 };
@@ -107,21 +109,21 @@ export function setup() {
 }
 
 export function produceInput(data) {
-  const now = Date.now();
-  const id = `${data.runId}-${__VU}-${__ITER}-${now}`;
-  const deadlineMs = now + delayMs;
+  const publishedAtMs = Date.now();
+  const id = `${data.runId}-${__VU}-${__ITER}-${publishedAtMs}`;
+  const scheduledAtMs = publishedAtMs + scheduleDelayMs;
   const message = {
     key: encoding.b64encode(id),
     value: encoding.b64encode(JSON.stringify({
       source: "k6-load",
       run_id: data.runId,
       message_id: id,
-      sent_at_ms: now,
-      deadline_ms: deadlineMs,
+      published_at_ms: publishedAtMs,
+      scheduled_at_ms: scheduledAtMs,
     })),
     headers: {
       chronosMessageId: id,
-      chronosDeadline: new Date(deadlineMs).toISOString(),
+      chronosDeadline: new Date(scheduledAtMs).toISOString(),
     },
   };
   getProducer().produce({ messages: [message] });
@@ -141,8 +143,13 @@ export function consumeOutput(data) {
       continue;
     }
     seen[parsed.message_id] = true;
+    const outputPublishedAtMs = Date.parse(message.time);
+    if (Number.isNaN(outputPublishedAtMs)) {
+      timestampErrors.add(1);
+      continue;
+    }
     consumed.add(1);
-    schedulingJitter.add(Math.max(0, Date.now() - Number(parsed.deadline_ms)));
+    schedulingJitter.add(Math.max(0, outputPublishedAtMs - Number(parsed.scheduled_at_ms)));
     matched += 1;
   }
   if (matched === 0) {
