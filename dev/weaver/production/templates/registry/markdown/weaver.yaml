@@ -6,11 +6,11 @@ templates:
           | map(select(.type == "metric"))
           | map({
               metric_name,
-              prometheus_name: .annotations.code_generation.prometheus_name,
+              prometheus_name: (.metric_name | split(".") | join("_")),
               brief,
               instrument,
               unit,
-              attributes: (.annotations.code_generation.label_names // (.attributes // [] | map(.name // .id // .ref)))
+              attributes: (.attributes // [] | map(.name // .id // .ref))
             }))
       }
     application_mode: single

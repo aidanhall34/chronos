@@ -84,7 +84,7 @@ impl MessageReceiver {
 
     #[tracing::instrument(name = "receiver_handle_message", skip_all, fields(correlationId, error))]
     pub async fn handle_message(&self, message: &BorrowedMessage<'_>) {
-        // msg_wait_time: record how long the message waited in the Kafka input queue.
+        // chronos.message.wait.duration: record how long the message waited in the Kafka input queue.
         // Uses the Kafka-assigned message timestamp; guards against clock skew with max(0).
         if let Some(kafka_ts_ms) = message.timestamp().to_millis() {
             let wait_secs = (Utc::now().timestamp_millis() - kafka_ts_ms).max(0) as f64 / 1000.0;
@@ -117,7 +117,7 @@ impl MessageReceiver {
             }
         }
 
-        // msg_consume_latency: only record when destination was determined (valid message headers).
+        // chronos.message.consume.duration: only record when destination was determined (valid message headers).
         if destination != "unknown" {
             let elapsed = timer.elapsed().as_secs_f64();
             self.metrics.observe_consume_latency(elapsed, destination, status);

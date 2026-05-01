@@ -65,7 +65,7 @@ impl MessageProcessor {
                     .kafka_publish(updated_row.message_value.to_string(), Some(headers), updated_row.message_key.to_string())
                     .await
                 {
-                    // msg_jitter: difference between actual publish time and client-requested deadline.
+                    // chronos.message.jitter: difference between actual publish time and client-requested deadline.
                     // Floored at 0 to guard against clock skew producing negative jitter.
                     self.metrics.observe_jitter(jitter_seconds(published.timestamp, deadline));
                     Ok(published.id)
@@ -162,7 +162,7 @@ impl MessageProcessor {
             log::debug!("MessageProcessor loop");
             tokio::time::sleep(Duration::from_millis(10)).await;
 
-            // msg_process_latency: time the full processor_message_ready() call.
+            // chronos.message.process.duration: time the full processor_message_ready() call.
             let timer = std::time::Instant::now();
             let (returned, status) = self.processor_message_ready(node_id).await;
             let elapsed = timer.elapsed().as_secs_f64();
@@ -213,7 +213,7 @@ mod tests {
         metrics.observe_jitter(0.3);
         let output = metrics.render_prometheus().unwrap();
         assert!(
-            output.contains("chronos_msg_jitter_bucket{le=\"0.5\"} 1"),
+            output.contains("chronos_message_jitter_bucket{le=\"0.5\"} 1"),
             "300ms jitter must be counted in the <=500ms bucket"
         );
     }

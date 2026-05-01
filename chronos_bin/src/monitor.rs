@@ -26,7 +26,7 @@ impl FailureDetector {
         if !fetched_rows.is_empty() {
             match &self.data_store.reset_to_init_db(fetched_rows).await {
                 Ok(reset_ids) => {
-                    // msg_reset: count the number of messages reset by the monitor task.
+                    // chronos.message.reset: count the number of messages reset by the monitor task.
                     self.metrics.messages_reset(reset_ids.len() as u64);
                     log::debug!("reset_to_init_db success for {:?}", fetched_rows)
                 }

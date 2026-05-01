@@ -8,12 +8,11 @@ templates:
               id,
               metric_name,
               rust_name: .annotations.code_generation.rust_name,
-              prometheus_name: .annotations.code_generation.prometheus_name,
               brief,
               instrument,
               unit,
-              attributes: (.annotations.code_generation.label_names // (.attributes // [] | map(.name // .id // .ref))),
-              prometheus_labels: (.annotations.code_generation.prometheus_label_names // (.attributes // [] | map((.name // .id // .ref) | gsub("\\."; "_")))),
+              attributes: (.attributes // [] | map(.name // .id // .ref)),
+              temporality: .annotations.code_generation.temporality,
               buckets: .annotations.code_generation.buckets,
               prewarm_label_values: (.annotations.code_generation.prewarm_label_values // [])
             }))

@@ -24,16 +24,20 @@ impl MetricKind {
     }
 }
 
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MetricTemporality {
+    Cumulative,
+}
+
 #[derive(Clone, Copy, Debug)]
 pub struct MetricDefinition {
     pub id: MetricId,
-    pub otel_name: &'static str,
-    pub prometheus_name: &'static str,
+    pub name: &'static str,
     pub description: &'static str,
     pub unit: Option<&'static str>,
     pub label_names: &'static [&'static str],
-    pub prometheus_label_names: &'static [&'static str],
     pub kind: MetricKind,
+    pub temporality: Option<MetricTemporality>,
     pub buckets: Option<&'static [f64]>,
     pub prewarm_label_values: &'static [&'static [&'static str]],
 }
@@ -42,13 +46,12 @@ pub const METRIC_DEFINITIONS: &[MetricDefinition] = &[
 {%- for metric in ctx.metrics %}
     MetricDefinition {
         id: MetricId::{{ metric.rust_name | pascal_case }},
-        otel_name: "{{ metric.metric_name }}",
-        prometheus_name: "{{ metric.prometheus_name }}",
+        name: "{{ metric.metric_name }}",
         description: "{{ metric.brief }}",
         unit: {% if metric.unit %}Some("{{ metric.unit }}"){% else %}None{% endif %},
         label_names: &[{% for attribute in metric.attributes %}"{{ attribute }}"{% if not loop.last %}, {% endif %}{% endfor %}],
-        prometheus_label_names: &[{% for label in metric.prometheus_labels %}"{{ label }}"{% if not loop.last %}, {% endif %}{% endfor %}],
         kind: MetricKind::{{ metric.instrument | pascal_case }},
+        temporality: {% if metric.temporality == "cumulative" %}Some(MetricTemporality::Cumulative){% else %}None{% endif %},
         buckets: {% if metric.buckets %}{% if metric.buckets | length > 10 %}Some(&[
             {{ metric.buckets | join(", ") }},
         ]){% else %}Some(&[{{ metric.buckets | join(", ") }}]){% endif %}{% else %}None{% endif %},

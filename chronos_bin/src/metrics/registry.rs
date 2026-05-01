@@ -5,19 +5,18 @@ use opentelemetry::global;
 use opentelemetry::metrics::{Counter as OtlpCounter, Histogram as OtlpHistogram, Unit};
 use opentelemetry::KeyValue;
 use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk::metrics::reader::{AggregationSelector, DefaultAggregationSelector};
+use opentelemetry_sdk::metrics::data::Temporality;
+use opentelemetry_sdk::metrics::reader::{AggregationSelector, DefaultAggregationSelector, TemporalitySelector};
 use opentelemetry_sdk::metrics::{Aggregation, InstrumentKind};
 use prometheus::{histogram_opts, opts, CounterVec as PromCounterVec, HistogramVec as PromHistogramVec, Registry};
 
-use crate::metrics::generated::{MetricDefinition, MetricId, MetricKind, METRIC_DEFINITIONS};
+use crate::metrics::generated::{MetricDefinition, MetricId, MetricKind, MetricTemporality, METRIC_DEFINITIONS};
 
 const OTEL_METRICS_EXPORTER: &str = "OTEL_METRICS_EXPORTER";
 const OTEL_EXPORTER_OTLP_ENDPOINT: &str = "OTEL_EXPORTER_OTLP_ENDPOINT";
 const OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: &str = "OTEL_EXPORTER_OTLP_METRICS_ENDPOINT";
 const OTEL_EXPORTER_OTLP_PROTOCOL: &str = "OTEL_EXPORTER_OTLP_PROTOCOL";
 const OTEL_EXPORTER_OTLP_METRICS_PROTOCOL: &str = "OTEL_EXPORTER_OTLP_METRICS_PROTOCOL";
-const PROMETHEUS_NAMESPACE: &str = "chronos";
-
 type MetricLabels<'a> = &'a [(&'static str, String)];
 
 trait MetricsBackend: Send + Sync {
@@ -133,24 +132,27 @@ struct PrometheusMetricsBackend {
 
 impl PrometheusMetricsBackend {
     fn new() -> Result<Self, prometheus::Error> {
-        let registry = Registry::new_custom(Some(PROMETHEUS_NAMESPACE.to_string()), None)?;
+        let registry = Registry::new();
         let mut counters = HashMap::new();
         let mut histograms = HashMap::new();
 
         for definition in METRIC_DEFINITIONS {
+            let prometheus_name = prometheus_metric_name(definition.name);
+            let prometheus_label_names = prometheus_label_names(definition.label_names);
+            let prometheus_label_refs = prometheus_label_names.iter().map(String::as_str).collect::<Vec<_>>();
             match definition.kind {
                 MetricKind::Counter => {
-                    let metric = PromCounterVec::new(opts!(definition.prometheus_name, definition.description), definition.prometheus_label_names)?;
+                    let metric = PromCounterVec::new(opts!(prometheus_name, definition.description), &prometheus_label_refs)?;
                     registry.register(Box::new(metric.clone()))?;
                     prewarm_counter(definition, &metric)?;
                     counters.insert(definition.id, metric);
                 }
                 MetricKind::Histogram => {
                     let opts = match definition.buckets {
-                        Some(buckets) => histogram_opts!(definition.prometheus_name, definition.description, buckets.to_vec()),
-                        None => histogram_opts!(definition.prometheus_name, definition.description),
+                        Some(buckets) => histogram_opts!(prometheus_name, definition.description, buckets.to_vec()),
+                        None => histogram_opts!(prometheus_name, definition.description),
                     };
-                    let metric = PromHistogramVec::new(opts, definition.prometheus_label_names)?;
+                    let metric = PromHistogramVec::new(opts, &prometheus_label_refs)?;
                     registry.register(Box::new(metric.clone()))?;
                     prewarm_histogram(definition, &metric)?;
                     histograms.insert(definition.id, metric);
@@ -167,7 +169,7 @@ impl PrometheusMetricsBackend {
 }
 
 fn prewarm_counter(definition: &MetricDefinition, metric: &PromCounterVec) -> Result<(), prometheus::Error> {
-    if definition.prometheus_label_names.is_empty() {
+    if definition.label_names.is_empty() {
         metric.get_metric_with_label_values(&[])?;
         return Ok(());
     }
@@ -180,7 +182,7 @@ fn prewarm_counter(definition: &MetricDefinition, metric: &PromCounterVec) -> Re
 }
 
 fn prewarm_histogram(definition: &MetricDefinition, metric: &PromHistogramVec) -> Result<(), prometheus::Error> {
-    if definition.prometheus_label_names.is_empty() {
+    if definition.label_names.is_empty() {
         metric.get_metric_with_label_values(&[])?;
         return Ok(());
     }
@@ -240,10 +242,23 @@ impl AggregationSelector for ChronosAggregationSelector {
     }
 }
 
+struct ChronosTemporalitySelector;
+
+impl TemporalitySelector for ChronosTemporalitySelector {
+    fn temporality(&self, kind: InstrumentKind) -> Temporality {
+        if kind == InstrumentKind::Histogram {
+            Temporality::Cumulative
+        } else {
+            opentelemetry_sdk::metrics::reader::DefaultTemporalitySelector::new().temporality(kind)
+        }
+    }
+}
+
 fn otlp_histogram_boundaries() -> Vec<f64> {
     let mut boundaries = METRIC_DEFINITIONS
         .iter()
         .filter(|definition| definition.kind.is_histogram())
+        .filter(|definition| definition.temporality == Some(MetricTemporality::Cumulative))
         .filter_map(|definition| definition.buckets)
         .flat_map(|buckets| buckets.iter().copied())
         .collect::<Vec<_>>();
@@ -268,6 +283,7 @@ impl OtlpMetricsBackend {
             .metrics(opentelemetry::runtime::Tokio)
             .with_exporter(exporter)
             .with_aggregation_selector(ChronosAggregationSelector)
+            .with_temporality_selector(ChronosTemporalitySelector)
             .build()?;
 
         global::set_meter_provider(provider.clone());
@@ -279,14 +295,14 @@ impl OtlpMetricsBackend {
         for definition in METRIC_DEFINITIONS {
             match definition.kind {
                 MetricKind::Counter => {
-                    let mut builder = meter.u64_counter(definition.otel_name).with_description(definition.description);
+                    let mut builder = meter.u64_counter(definition.name).with_description(definition.description);
                     if let Some(unit) = definition.unit {
                         builder = builder.with_unit(Unit::new(unit));
                     }
                     counters.insert(definition.id, builder.init());
                 }
                 MetricKind::Histogram => {
-                    let mut builder = meter.f64_histogram(definition.otel_name).with_description(definition.description);
+                    let mut builder = meter.f64_histogram(definition.name).with_description(definition.description);
                     if let Some(unit) = definition.unit {
                         builder = builder.with_unit(Unit::new(unit));
                     }
@@ -343,11 +359,14 @@ fn require_grpc_protocol() -> Result<(), Box<dyn std::error::Error + Send + Sync
 }
 
 fn consume_labels(destination: &'static str, status: &'static str) -> Vec<(&'static str, String)> {
-    vec![("destination", destination.to_string()), ("status", status.to_string())]
+    vec![("chronos.destination", destination.to_string()), ("chronos.consume.status", status.to_string())]
 }
 
 fn process_labels(returned: bool, status: &'static str) -> Vec<(&'static str, String)> {
-    vec![("returned", returned.to_string()), ("status", status.to_string())]
+    vec![
+        ("chronos.processor.returned", returned.to_string()),
+        ("chronos.process.status", status.to_string()),
+    ]
 }
 
 fn metric_definition(id: MetricId) -> Option<&'static MetricDefinition> {
@@ -376,6 +395,31 @@ fn labels_to_key_values(labels: MetricLabels<'_>) -> Vec<KeyValue> {
     labels.iter().map(|(key, value)| KeyValue::new(*key, value.clone())).collect()
 }
 
+fn prometheus_metric_name(name: &str) -> String {
+    normalize_prometheus_identifier(name, true)
+}
+
+fn prometheus_label_names(names: &[&str]) -> Vec<String> {
+    names.iter().map(|name| normalize_prometheus_identifier(name, false)).collect()
+}
+
+fn normalize_prometheus_identifier(name: &str, allow_colon: bool) -> String {
+    let mut output = String::with_capacity(name.len());
+
+    for (index, character) in name.chars().enumerate() {
+        let is_allowed = character.is_ascii_alphanumeric() || character == '_' || (allow_colon && character == ':');
+        let is_valid_first = character.is_ascii_alphabetic() || character == '_' || (allow_colon && character == ':');
+
+        if (index == 0 && !is_valid_first) || (index > 0 && !is_allowed) {
+            output.push('_');
+        } else {
+            output.push(character);
+        }
+    }
+
+    output
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -401,23 +445,24 @@ mod tests {
         let output = metrics.render_prometheus().unwrap();
 
         for definition in METRIC_DEFINITIONS {
+            let prometheus_name = prometheus_metric_name(definition.name);
             assert!(
-                output.contains(&format!("# HELP {PROMETHEUS_NAMESPACE}_{}", definition.prometheus_name)),
+                output.contains(&format!("# HELP {prometheus_name}")),
                 "metric {} must be registered from generated definitions",
-                definition.prometheus_name
+                definition.name
             );
         }
     }
 
     #[test]
     #[serial]
-    fn prometheus_metrics_use_chronos_namespace() {
+    fn prometheus_metrics_normalize_otel_names() {
         let metrics = prometheus_metrics();
         metrics.observe_jitter(0.499);
         let output = metrics.render_prometheus().unwrap();
 
-        assert!(output.contains("# HELP chronos_msg_jitter"));
-        assert!(!output.contains("# HELP msg_jitter"));
+        assert!(output.contains("# HELP chronos_message_jitter"));
+        assert!(!output.contains("# HELP chronos.message.jitter"));
     }
 
     #[test]
@@ -427,7 +472,7 @@ mod tests {
         metrics.observe_jitter(0.499);
         let output = metrics.render_prometheus().unwrap();
 
-        assert!(output.contains("chronos_msg_jitter_bucket{le=\"0.5\"} 1"));
+        assert!(output.contains("chronos_message_jitter_bucket{le=\"0.5\"} 1"));
     }
 
     #[test]
@@ -448,7 +493,7 @@ mod tests {
         metrics.messages_reset(2);
         let output = metrics.render_prometheus().unwrap();
 
-        assert!(output.contains("chronos_msg_reset 5"));
+        assert!(output.contains("chronos_message_reset 5"));
     }
 
     #[test]
@@ -458,7 +503,7 @@ mod tests {
         metrics.observe_wait_time(1.5);
         let output = metrics.render_prometheus().unwrap();
 
-        assert!(output.contains("chronos_msg_wait_time_count 1"));
+        assert!(output.contains("chronos_message_wait_duration_count 1"));
     }
 
     #[test]
@@ -469,7 +514,7 @@ mod tests {
         metrics.observe_process_latency(0.01, false, "fail");
         let output = metrics.render_prometheus().unwrap();
 
-        assert!(output.contains("chronos_msg_consume_latency_count{destination=\"postgres\",status=\"pass\"} 1"));
-        assert!(output.contains("chronos_msg_process_latency_count{returned=\"false\",status=\"fail\"} 1"));
+        assert!(output.contains("chronos_message_consume_duration_count{chronos_consume_status=\"pass\",chronos_destination=\"postgres\"} 1"));
+        assert!(output.contains("chronos_message_process_duration_count{chronos_process_status=\"fail\",chronos_processor_returned=\"false\"} 1"));
     }
 }
