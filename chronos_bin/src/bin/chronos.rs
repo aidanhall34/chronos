@@ -14,6 +14,10 @@ use std::time::Duration;
 async fn main() {
     env_logger::init();
     dotenvy::dotenv().ok();
+    std::env::set_var(
+        "OTEL_SERVICE_NAME",
+        std::env::var("OTEL_SERVICE_NAME").unwrap_or_else(|_| "chronos".to_string()),
+    );
 
     let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or_else(|_| "http/json".to_string());
 
