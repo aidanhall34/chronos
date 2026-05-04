@@ -134,8 +134,8 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(\n    increase(\n        chronos_message_consume_duration_seconds_count[$__range]\n    )\n) by (status, destination)",
-          "legendFormat": "{{ destination }}:{{ status }}",
+          "expr": "sum(\n    increase(\n        chronos_message_consume_duration_seconds_count[$__range]\n    )\n) by (chronos_consume_status, chronos_destination)",
+          "legendFormat": "{{ chronos_consume_status }}:{{ chronos_destination }}",
           "range": true,
           "refId": "A"
         }
@@ -160,6 +160,7 @@
             "axisLabel": "",
             "axisPlacement": "auto",
             "axisSoftMax": 0.5,
+            "axisSoftMin": 0,
             "barAlignment": 0,
             "barWidthFactor": 0.6,
             "drawStyle": "line",
@@ -244,6 +245,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
+      "description": "{{ chronos_destination }}:{{ chronos_consume_status }}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -325,8 +327,8 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(\n    rate(\n        chronos_message_consume_duration_seconds_count[$__rate_interval]\n    )\n) by (status, destination)",
-          "legendFormat": "__auto",
+          "expr": "sum(\n    rate(\n        chronos_message_consume_duration_seconds_count[$__rate_interval]\n    )\n) by (chronos_consume_status, chronos_destination)",
+          "legendFormat": "{{ chronos_destination }}:{{ chronos_consume_status }}",
           "range": true,
           "refId": "A"
         }
@@ -435,7 +437,7 @@
         "type": "prometheus",
         "uid": "prometheus"
       },
-      "description": "The % of messages routed to either Postgres or Kafka",
+      "description": "The % of messages routed to either Postgres or Kafka\n{{ chronos_destination }}:{{ chronos_consume_status }}",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -513,8 +515,8 @@
       "targets": [
         {
           "editorMode": "code",
-          "expr": "sum(\n    rate(\n        chronos_message_consume_duration_seconds_count[$__rate_interval]\n    )\n) by (status, destination) / on() group_left() sum(\n    rate(\n        chronos_message_consume_duration_seconds_count[$__rate_interval]\n    )\n) by (status)",
-          "legendFormat": "__auto",
+          "expr": "sum(\n    rate(\n        chronos_message_consume_duration_seconds_count[$__rate_interval]\n    )\n) by (chronos_consume_status, chronos_destination) / on() group_left() sum(\n    rate(\n        chronos_message_consume_duration_seconds_count[$__rate_interval]\n    )\n) by (chronos_consume_status)",
+          "legendFormat": "{{ chronos_destination }}:{{ chronos_consume_status }}",
           "range": true,
           "refId": "A"
         }
@@ -936,13 +938,13 @@
     ]
   },
   "time": {
-    "from": "now-5m",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "browser",
   "title": "Chronos",
   "uid": "gk65ns",
-  "version": 3,
+  "version": 1,
   "weekStart": ""
 }

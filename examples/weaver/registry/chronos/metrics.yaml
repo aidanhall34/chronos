@@ -8,13 +8,13 @@ groups:
         type: string
         stability: stable
         brief: Logical name of the service.
-        examples: ["chronos-metrics-mock"]
+        examples: [ "chronos-metrics-mock" ]
         requirement_level: required
       - id: service.instance.id
         type: string
         stability: stable
         brief: The string ID of the service instance.
-        examples: ["chronos-metrics-mock-live-check"]
+        examples: [ "chronos-metrics-mock-live-check" ]
         requirement_level: required
 
   - id: metric_attributes.chronos.consume_result
@@ -26,13 +26,13 @@ groups:
         type: string
         stability: development
         brief: Downstream selected by message_receiver::handle_message.
-        examples: ["kafka", "postgres"]
+        examples: [ "kafka", "postgres" ]
         requirement_level: required
       - id: chronos.consume.status
         type: string
         stability: development
         brief: Whether the consume path completed successfully.
-        examples: ["pass", "fail"]
+        examples: [ "pass", "fail" ]
         requirement_level: required
 
   - id: metric_attributes.chronos.process_result
@@ -44,13 +44,13 @@ groups:
         type: string
         stability: development
         brief: Whether the processor loop returned early because no rows were ready.
-        examples: ["true", "false"]
+        examples: [ "true", "false" ]
         requirement_level: required
       - id: chronos.process.status
         type: string
         stability: development
         brief: Whether the processor loop completed successfully.
-        examples: ["pass", "fail"]
+        examples: [ "pass", "fail" ]
         requirement_level: required
 
   - id: metric.chronos.message.consume.duration
@@ -66,14 +66,28 @@ groups:
         rust_name: msg_consume_latency
         metric_value_type: double
         prometheus_name: msg_consume_latency
-        label_names: [destination, status]
-        prometheus_label_names: [destination, status]
-        buckets: [0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024, 2.048]
+        label_names: [ destination, status ]
+        prometheus_label_names: [ destination, status ]
+        buckets:
+          [
+            0.001,
+            0.002,
+            0.004,
+            0.008,
+            0.016,
+            0.032,
+            0.064,
+            0.128,
+            0.256,
+            0.512,
+            1.024,
+            2.048,
+          ]
         prewarm_label_values:
-          - [kafka, pass]
-          - [kafka, fail]
-          - [postgres, pass]
-          - [postgres, fail]
+          - [ kafka, pass ]
+          - [ kafka, fail ]
+          - [ postgres, pass ]
+          - [ postgres, fail ]
 
   - id: metric.chronos.message.process.duration
     type: metric
@@ -88,14 +102,28 @@ groups:
         rust_name: msg_process_latency
         metric_value_type: double
         prometheus_name: msg_process_latency
-        label_names: [returned, status]
-        prometheus_label_names: [returned, status]
-        buckets: [0.001, 0.002, 0.004, 0.008, 0.016, 0.032, 0.064, 0.128, 0.256, 0.512, 1.024, 2.048]
+        label_names: [ returned, status ]
+        prometheus_label_names: [ returned, status ]
+        buckets:
+          [
+            0.001,
+            0.002,
+            0.004,
+            0.008,
+            0.016,
+            0.032,
+            0.064,
+            0.128,
+            0.256,
+            0.512,
+            1.024,
+            2.048,
+          ]
         prewarm_label_values:
-          - ["true", pass]
-          - ["true", fail]
-          - ["false", pass]
-          - ["false", fail]
+          - [ "true", pass ]
+          - [ "true", fail ]
+          - [ "false", pass ]
+          - [ "false", fail ]
 
   - id: metric.chronos.message.wait.duration
     type: metric
@@ -109,7 +137,23 @@ groups:
         rust_name: msg_wait_time
         metric_value_type: double
         prometheus_name: msg_wait_time
-        buckets: [0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4, 12.8, 25.6, 51.2, 102.4, 204.8, 409.6, 819.2]
+        buckets:
+          [
+            0.1,
+            0.2,
+            0.4,
+            0.8,
+            1.6,
+            3.2,
+            6.4,
+            12.8,
+            25.6,
+            51.2,
+            102.4,
+            204.8,
+            409.6,
+            819.2,
+          ]
 
   - id: metric.chronos.message.jitter
     type: metric
@@ -123,7 +167,7 @@ groups:
         rust_name: msg_jitter
         metric_value_type: double
         prometheus_name: msg_jitter
-        buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0]
+        buckets: [ 0.01, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0 ]
 
   - id: metric.chronos.message.reset
     type: metric
