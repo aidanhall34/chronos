@@ -1,60 +1,54 @@
-use opentelemetry_otlp::Protocol;
-use tracing_subscriber::{prelude::__tracing_subscriber_SubscriberExt, util::SubscriberInitExt};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
 
-use super::{jaegar_backend::instrument_jaegar_pipleline, otlp_collector::OtlpCollector};
+use super::otlp_collector::OtlpCollector;
 
 pub enum TelemetryCollectorType {
-    Jaegar,
     Otlp,
 }
 
 pub struct TelemetryCollector {
     pub collector_type: TelemetryCollectorType,
-    pub protocol: Protocol,
 }
 
 impl Default for TelemetryCollector {
     fn default() -> Self {
         TelemetryCollector {
             collector_type: TelemetryCollectorType::Otlp,
-            protocol: Protocol::HttpBinary,
         }
     }
 }
 
 impl TelemetryCollector {
-    pub fn new(env_protocol: String, collector_type: TelemetryCollectorType) -> Self {
-        let protocol = if env_protocol.to_lowercase().contains("grpc") {
-            Protocol::Grpc
-        } else {
-            Protocol::HttpBinary
-        };
-        TelemetryCollector { collector_type, protocol }
+    pub fn new(collector_type: TelemetryCollectorType) -> Self {
+        TelemetryCollector { collector_type }
     }
 
     pub fn register_traces(self) {
-        let tracer = match &self.collector_type {
-            TelemetryCollectorType::Jaegar => instrument_jaegar_pipleline(),
-            TelemetryCollectorType::Otlp => match self.protocol {
-                Protocol::Grpc => todo!(),
-                Protocol::HttpBinary => {
-                    let otlp_collector = OtlpCollector::new();
-                    otlp_collector.http_collector_connect(Protocol::HttpBinary)
+        let tracer = match self.collector_type {
+            TelemetryCollectorType::Otlp => {
+                let otlp_collector = OtlpCollector::new();
+                let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or_else(|_| "grpc".to_string());
+                if protocol.to_lowercase().contains("grpc") {
+                    otlp_collector.grpc_collector_connect()
+                } else {
+                    otlp_collector.http_collector_connect()
                 }
-            },
+            }
         };
 
         match tracer {
             Ok(tracer) => {
-                //creating a layer for Otel
                 let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+                let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
 
-                //subscribing to tracing with opentelemetry
-                match tracing_subscriber::registry().with(otel_layer).try_init() {
-                    Ok(_) => {}
-                    Err(e) => {
-                        println!(" {}", e);
-                    }
+                let init_result = tracing_subscriber::registry()
+                    .with(filter)
+                    .with(tracing_subscriber::fmt::layer())
+                    .with(otel_layer)
+                    .try_init();
+
+                if let Err(e) = init_result {
+                    eprintln!("failed to initialize tracing subscriber: {e}");
                 }
             }
             Err(e) => {

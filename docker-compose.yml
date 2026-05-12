@@ -1,170 +1,153 @@
-version: '3.1'
 services:
+  postgres:
+    image: postgres:17.3
+    container_name: chronos-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: chronos_db
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d chronos_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [chronos]
+  
 
-#postgres DB
-  # postgres:
-  #   image: postgres:13.3
-  #   ports:
-  #     - 5432:5432
-  #   volumes:
-  #     - postgres:/var/lib/postgresql/data/
-  #   environment:
-  #     POSTGRES_USER: admin
-  #     POSTGRES_PASSWORD: admin
-  #     POSTGRES_DB: chronos_db
+  # chronos-pg-mig:
+  #   image: mig
   #   networks:
   #     - chronos
-  # migration / init container  
+  #   working_dir: /opt/chronos
+  #   volumes:
+  #       - ../../:/opt/chronos
+  #   environment:
+  #       PG_HOST: postgres
+  #       PG_PORT: 5432
+  #       PG_USER: admin
+  #       PG_PASSWORD: admin
+  #       PG_DATABASE: chronos_db
+  #       PG_POOL_SIZE: 50
+  #       RUST_LOG: "${RUST_LOG:-info}"
+  #   depends_on:
+  #     - postgres
+
   # chronos-pg-mig:
-  #  image: mig
-  #  networks:
-  #    - chronos
-  #  working_dir: /opt/chronos
-  #  volumes:
-  #      - ../../:/opt/chronos
-  #  environment:
-  #     PG_HOST: postgres
-  #     PG_PORT: 5432
-  #     PG_USER: admin
-  #     PG_PASSWORD: admin
-  #     PG_DATABASE: chronos_db
-  #     PG_POOL_SIZE: 50
-  #     RUST_LOG: "${RUST_LOG:-info}"
-  #  depends_on:
-  #    - postgres
+  # build:
+  #   context: .
+  #   dockerfile: Dockerfile.chronos-pg-migrations
+  # image: mig:local
 
   # zookeeper:
-  #   image: bitnami/zookeeper:3.7.0
+  #   image: zookeeper:3.9
+  #   container_name: chronos-zookeeper
   #   ports:
-  #     - 2180:2181
-  #   volumes:
-  #     - zookeeper:/bitnami/zookeeper
+  #     - "2180:2181"
   #   environment:
   #     ALLOW_ANONYMOUS_LOGIN: "yes"
-  #   networks:
-  #     - chronos
-
-  # kafka:
-  #   image: bitnami/kafka:2.8.0
-  #   ports:
-  #     - 9092:9092
-  #     - 9093:9093
-  #     - 9094:9094
   #   volumes:
-  #     - kafka:/bitnami/kafka
-  #     - ./infra:/opt/infra
-  #   environment:
-  #     KAFKA_BROKER_ID: "1"
-  #     KAFKA_CFG_LISTENERS: "INTERNAL://:9092, EXTERNAL://:9093, K8S://:9094"
-  #     KAFKA_CFG_ADVERTISED_LISTENERS: "INTERNAL://kafka:9092, EXTERNAL://localhost:9093"
-  #     KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT, EXTERNAL:PLAINTEXT, K8S:PLAINTEXT"
-  #     KAFKA_CFG_ZOOKEEPER_CONNECT: "zookeeper:2181"
-  #     KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
-  #     KAFKA_INTER_BROKER_USER: "admin"
-  #     KAFKA_INTER_BROKER_PASSWORD: "admin-secret"
-  #     KAFKA_CFG_NUM_PARTITIONS: "1"
-  #     KAFKA_LOG_RETENTION_BYTES: -1
-  #     KAFKA_LOG_RETENTION_MS: -1
-  #     KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE: "true"
-  #     KAFKA_CFG_SUPER_USERS: "User:admin"
-  #     KAFKA_CLIENT_USERS: "admin,kafdrop"
-  #     KAFKA_CLIENT_PASSWORDS: "admin-secret,admin-secret"
-  #     ALLOW_PLAINTEXT_LISTENER: "yes"
-  #   networks:
-  #     - chronos
-  #   depends_on:
-  #     - zookeeper
+  #     - zookeeper:/bitnami/zookeeper
+  #   networks: [chronos]
 
-  # kowl:
-  #   image: quay.io/cloudhut/kowl:master
-  #   ports:
-  #     - 9091:8080
-  #   environment:
-  #     KAFKA_BROKERS: "kafka:9092"
-  #   networks:
-  #     - chronos
-  #   depends_on:
-  #     - kafka
-  #     - zookeeper
+  kafka:
+    image: apache/kafka:4.1.1
+    container_name: chronos-kafka
+    networks: [chronos]
+    ports:
+      - "9092:9092"
+      - "9093:9093"
+      - "9094:9094"
+    environment:
+      KAFKA_NODE_ID: "1"
+      KAFKA_PROCESS_ROLES: "broker,controller"
 
-  # chronos
+      KAFKA_LISTENERS: "INTERNAL://:9092,EXTERNAL://:9094,CONTROLLER://:9093"
+      KAFKA_ADVERTISED_LISTENERS: "INTERNAL://kafka:9092,EXTERNAL://localhost:9094"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT"
+      KAFKA_INTER_BROKER_LISTENER_NAME: "INTERNAL"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@kafka:9093"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: "1"
+
+  kowl:
+    image: quay.io/cloudhut/kowl:v1.5.0
+    container_name: chronos-kowl
+    depends_on:
+      - kafka
+    ports:
+      - "9091:8080"
+    environment:
+      KAFKA_BROKERS: "kafka:9092"
+    networks: [chronos]
+
+  jaeger-all-in-one:
+    image: jaegertracing/all-in-one:1.57
+    container_name: chronos-jaeger
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+      - "14268:14268"
+      - "14250:14250"
+      - "4319:4317"
+    networks: [chronos]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.104.0
+    container_name: chronos-otelcol
+    depends_on:
+      - jaeger-all-in-one
+    command: ["--config=/etc/otelcol-config.yml"]
+    volumes:
+      - ./infra/otelcol-config.yml:/etc/otelcol-config.yml:ro
+    ports:
+      - "1888:1888"
+      - "13133:13133"
+      - "4317:4317"
+      - "4318:4318"
+      - "55679:55679"
+    networks: [chronos]
+
   # chronos-delay-scheduler:
-  #  image: chronos
-  #  networks:
-  #    - chronos
-  #  ports:
-  #      - 8181:8181
-  #  working_dir: /opt/chronos
-  #  volumes:
-  #      - ../../:/opt/chronos
-  #  environment:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.chronos
+  #   image: chronos:local
+  #   container_name: chronos-app
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     kafka:
+  #       condition: service_started
+  #     otel-collector:
+  #       condition: service_started
+  #   ports:
+  #     - "8181:8181"
+  #   environment:
   #     ENVIRONMENT: "dev"
   #     SERVICE_NAME: "chronos-delay-scheduler"
   #     BUILD_VERSION: "0.0.0"
-  #     KAFKA_HOST: kafka
-  #     KAFKA_PORT: 9092
+  #     KAFKA_HOST: "kafka"
+  #     KAFKA_PORT: "9092"
   #     KAFKA_CLIENT_ID: "chronos"
   #     KAFKA_GROUP_ID: "chronos"
   #     KAFKA_IN_TOPIC: "chronos.in"
   #     KAFKA_OUT_TOPIC: "chronos.out"
-  #     KAFKA_USERNAME:
-  #     KAFKA_PASSWORD:
-  #     PG_HOST: postgres
-  #     PG_PORT: 5432
-  #     PG_USER: admin
-  #     PG_PASSWORD: admin
-  #     PG_DATABASE: chronos_db
-  #     PG_POOL_SIZE: 50
-  #     RUST_LOG: "${RUST_LOG:-info}"
-  #     # App config (optional)
-  #     # DELAY_TIME: 0
-  #     # RANDOMNESS_DELAY: 100
-  #     # MONITOR_POLL_INTERVAL: 5
-  #     # TIMING_ADVANCE: 0
-  #     # FAIL_DETECT_INTERVAL: 500
-  #  depends_on:
-  #    - postgres
-  #    - zookeeper
-  #    - kafka
-
-  # ********************
-  # Telemetry Components
-  # ********************
-  # Jaeger
-
-  jaeger-all-in-one:
-    image: jaegertracing/all-in-one:latest
-    ports:
-      - "16686:16686"
-      - "14268"
-      - "14250"
-    container_name: Jaeger
-    environment:
-    #  COLLECTOR_OTLP_ENABLED is false in case running Jaeger as Backend
-      - COLLECTOR_OTLP_ENABLED=true
-    networks:
-      - chronos
-
-  # Collector
-  otel-collector:
-    image: otel/opentelemetry-collector:latest
-    container_name: otelcol
-    networks:
-      - chronos
-    restart: unless-stopped
-    command: [ "--config=/etc/otelcol-config.yml" ]
-    volumes:
-      - ./infra/otelcol-config.yml:/etc/otelcol-config.yml
-    ports:
-      - "1888:1888"   # pprof extension
-      - "13133:13133" # health_check extension
-      - "4317:4317"   # OTLP gRPC receiver
-      - "4318:4318"   # OTLP HTTP receiver
-      - "55670:55679" # zpages extension
-    depends_on:
-      - jaeger-all-in-one
-
-
+  #     PG_HOST: "postgres"
+  #     PG_PORT: "5432"
+  #     PG_USER: "admin"
+  #     PG_PASSWORD: "admin"
+  #     PG_DATABASE: "chronos_db"
+  #     PG_POOL_SIZE: "50"
+  #     RUST_LOG: "info"
+  #     OTEL_SERVICE_NAME: "chronos"
+  #     OTEL_EXPORTER_OTLP_PROTOCOL: "grpc"
+  #     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: "http://otel-collector:4317"
+  #   networks: [chronos]
 
 networks:
   chronos:
@@ -172,8 +155,5 @@ networks:
 
 volumes:
   postgres:
-    driver: local
   zookeeper:
-    driver: local
   kafka:
-    driver: local

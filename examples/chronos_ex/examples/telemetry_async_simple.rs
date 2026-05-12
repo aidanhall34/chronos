@@ -1,75 +1,43 @@
+use opentelemetry::global;
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::propagation::TraceContextPropagator;
+use opentelemetry_sdk::trace::SdkTracerProvider;
 use tracing::info_span;
 use tracing_subscriber::prelude::*;
 
-struct B {}
+fn init_tracer() -> Result<opentelemetry_sdk::trace::Tracer, Box<dyn std::error::Error + Send + Sync>> {
+    let endpoint = std::env::var("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT").unwrap_or_else(|_| "http://localhost:4317".to_string());
 
-impl B {
-    pub async fn run(&self) {
-        let span_sub_runer = info_span!("B");
-        let _guard = span_sub_runer.enter();
-        println!("B");
-    }
-}
+    global::set_text_map_propagator(TraceContextPropagator::new());
 
-struct A {}
+    let exporter = opentelemetry_otlp::SpanExporter::builder().with_tonic().with_endpoint(endpoint).build()?;
 
-impl A {
-    pub fn new() -> Self {
-        Self {}
-    }
-    pub async fn run(&self) {
-        let span_runer = info_span!("A");
-        let _guard = span_runer.enter();
-        println!("A");
-        let sub_runner = B {};
-        sub_runner.run().await;
-    }
-}
+    let provider = SdkTracerProvider::builder().with_batch_exporter(exporter).build();
+    global::set_tracer_provider(provider.clone());
 
-struct Runner {}
-
-impl Runner {
-    pub async fn run(&self) {
-        let span_runer = info_span!("Runner");
-        let _guard = span_runer.enter();
-        println!("Runner");
-        // A::new().run().await;
-        let handler = tokio::task::spawn(async {
-            println!("this is spawning");
-            A::new().run().await;
-        });
-        // let handler_one = tokio::task::spawn(async {
-        //     let runner = Runner {};
-        //     runner.run().await;
-        // });
-
-        futures::future::join_all([handler]).await;
-    }
+    Ok(provider.tracer("telemetry_async_simple"))
 }
 
 #[tokio::main]
 async fn main() {
-    // env_logger::init();
     dotenv::dotenv().ok();
 
-    let tracer = opentelemetry_jaeger::new_agent_pipeline()
-        .with_service_name("test_async_tel")
-        .install_simple()
-        .expect("failed to install tracing");
-
-    //creating a layer for Otel
+    let tracer = init_tracer().expect("failed to init tracer");
     let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
 
-    // let subscriber = Registry::default().with(otel_layer);
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::EnvFilter::new("info"))
+        .with(tracing_subscriber::fmt::layer())
+        .with(otel_layer)
+        .try_init()
+        .ok();
 
-    //subscribing to tracing with opentelemetry
-    match tracing_subscriber::registry().with(otel_layer).try_init() {
-        Ok(_) => {}
-        Err(e) => {
-            println!("error while initializing tracing {}", e);
-        }
-    }
+    let h = tokio::spawn(async {
+        let s = info_span!("async_task");
+        let _g = s.enter();
+        println!("inside async task");
+    });
 
-    let runner = Runner {};
-    runner.run().await;
+    let _ = h.await;
 }

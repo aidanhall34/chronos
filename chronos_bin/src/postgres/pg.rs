@@ -247,7 +247,7 @@ impl Pg {
         }
     }
 
-    // #[tracing::instrument(skip_all)]
+    #[tracing::instrument(name = "ready_to_fire_db", skip_all)]
     pub(crate) async fn ready_to_fire_db(&self, param: &GetReady) -> Result<Vec<Row>, String> {
         //TODO handle get client error gracefully
         let method_name = "ready_to_fire_db";
@@ -290,12 +290,13 @@ impl Pg {
                 if time_elapsed > Duration::from_millis(100) {
                     log::warn!("{}: query_execute_instant: {:?} params: {:?}", method_name, time_elapsed, param);
                 }
+                // event!(tracing::Level::INFO, "ready_to_fire_db success");
                 Ok(resp)
             }
             Err(e) => {
                 if let Some(err_code) = e.code() {
                     if err_code == &SqlState::T_R_SERIALIZATION_FAILURE {
-                        log::warn!("{}: serialization failure params: {:?}", method_name, param);
+                        event!(tracing::Level::WARN, "{}: serialization failure params: {:?}", method_name, param);
                         // not throw error, just return empty vector
                         return Ok(Vec::new());
                     }
@@ -305,7 +306,7 @@ impl Pg {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(name = "failed_to_fire_db", skip_all)]
     pub(crate) async fn failed_to_fire_db(&self, delay_time: &DateTime<Utc>) -> Result<Vec<Row>, PgError> {
         let method_name = "failed_to_fire_db";
         let query_execute_instant = Instant::now();
@@ -321,14 +322,14 @@ impl Pg {
         if time_elapsed > Duration::from_millis(100) {
             log::info!("{}: query_execute_instant: {:?} ", method_name, time_elapsed);
         }
-
+        // event!(tracing::Level::INFO, "failed_to_fire_db success");
         Ok(response)
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(name = "reset_to_init_db", skip_all)]
     pub(crate) async fn reset_to_init_db(&self, to_init_list: &Vec<Row>) -> Result<Vec<String>, String> {
         let method_name = "reset_to_init_db";
-        println!("to_init_list: {:?}", to_init_list);
+        log::debug!("to_init_list: {:?}", to_init_list);
         let query_execute_instant = Instant::now();
         let mut id_list = Vec::<String>::new();
         for row in to_init_list {
@@ -355,7 +356,7 @@ impl Pg {
         for i in 0..id_list.len() {
             query = query + "$" + (i + 1).to_string().as_str() + ",";
         }
-        println!("query: {}", query);
+        log::debug!("query: {}", query);
         query = match query.strip_suffix(',') {
             Some(query) => query.to_string(),
             None => {

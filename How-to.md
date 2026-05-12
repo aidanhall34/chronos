@@ -59,8 +59,8 @@ At this time Chronos supports Http protocol based connectivity to the Otel colle
 |---|--|
 |   OTEL_SERVICE_NAME|Chronos|
 |   OTEL_TRACES_EXPORTER|otlp|
-|   OTEL_EXPORTER_OTLP_TRACES_ENDPOINT|"http://localhost:4318/v1/traces"
-|   OTEL_EXPORTER_OTLP_PROTOCOL|"http/json"
+|   OTEL_EXPORTER_OTLP_TRACES_ENDPOINT|"http://localhost:4317"
+|   OTEL_EXPORTER_OTLP_PROTOCOL|"grpc"
 
 ## Chronos Images 
 Two images are published for each [RELEASE]( `https://github.com/kindredgroup/chronos/pkgs/container/chronos`)

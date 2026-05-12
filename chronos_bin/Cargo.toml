@@ -54,14 +54,12 @@ openssl = "0.10.57"
 
 #tracing
 tracing.workspace = true
-tracing-subscriber.workspace = true
 tracing-opentelemetry.workspace = true
+tracing-subscriber.workspace = true
+
+#opentelemetry
 opentelemetry.workspace = true
 opentelemetry_sdk.workspace = true
-opentelemetry_api.workspace = true
-opentelemetry-jaeger.workspace = true
-
-# opentelemetry-jaeger.workspace = true
 opentelemetry-otlp.workspace = true
 
 [dev-dependencies]

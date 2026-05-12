@@ -4,61 +4,37 @@ use chronos_bin::kafka::producer::KafkaProducer;
 use chronos_bin::postgres::config::PgConfig;
 use chronos_bin::postgres::pg::Pg;
 use chronos_bin::runner::Runner;
-use log::debug;
+
+use log::{debug, error};
+use opentelemetry::global;
+use opentelemetry::trace::TracerProvider as _;
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::propagation::TraceContextPropagator;
+use opentelemetry_sdk::trace::SdkTracerProvider;
+use std::error::Error;
 use std::sync::Arc;
 use tracing_subscriber::prelude::*;
 
-use opentelemetry::trace::TraceError;
-use opentelemetry::{
-    global,
-    sdk::{
-        propagation::TraceContextPropagator,
-        resource::{
-            EnvResourceDetector, OsResourceDetector, ProcessResourceDetector, ResourceDetector, SdkProvidedResourceDetector, TelemetryResourceDetector,
-        },
-        trace as sdktrace,
-    },
-};
-use opentelemetry_otlp::WithExportConfig;
-use std::time::Duration;
+fn init_tracing() -> Result<(), Box<dyn Error + Send + Sync>> {
+    let endpoint = std::env::var("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT").unwrap_or_else(|_| "http://localhost:4317".to_string());
+    let service_name = std::env::var("OTEL_SERVICE_NAME").unwrap_or_else(|_| "chronos_ex".to_string());
 
-use tracing_subscriber::layer::SubscriberExt;
+    global::set_text_map_propagator(TraceContextPropagator::new());
 
-fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
-    let service_name = std::env::var("OTEL_SERVICE_NAME");
-    let trace_exporter = std::env::var("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT");
-    if service_name.is_err() {
-        std::env::set_var("OTEL_SERVICE_NAME", "chronos");
-    }
-    if trace_exporter.is_ok() {
-        global::set_text_map_propagator(TraceContextPropagator::new());
-        let os_resource = OsResourceDetector.detect(Duration::from_secs(0));
-        let process_resource = ProcessResourceDetector.detect(Duration::from_secs(0));
-        let sdk_resource = SdkProvidedResourceDetector.detect(Duration::from_secs(0));
-        let env_resource = EnvResourceDetector::new().detect(Duration::from_secs(0));
-        let telemetry_resource = TelemetryResourceDetector.detect(Duration::from_secs(0));
-        opentelemetry_otlp::new_pipeline()
-            .tracing()
-            .with_exporter(opentelemetry_otlp::new_exporter().http().with_endpoint(format!("{:?}", service_name)))
-            .with_trace_config(
-                sdktrace::config().with_resource(
-                    os_resource
-                        .merge(&process_resource)
-                        .merge(&sdk_resource)
-                        .merge(&env_resource)
-                        .merge(&telemetry_resource),
-                ),
-            )
-            .install_batch(opentelemetry::runtime::Tokio)
-    } else {
-        log::error!("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT not set");
+    let exporter = opentelemetry_otlp::SpanExporter::builder().with_tonic().with_endpoint(endpoint).build()?;
 
-        // trace error
-        Err(TraceError::Other(Box::new(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT not set",
-        ))))
-    }
+    let provider = SdkTracerProvider::builder().with_batch_exporter(exporter).build();
+    global::set_tracer_provider(provider.clone());
+
+    let tracer = provider.tracer(service_name);
+
+    let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .with(otel_layer)
+        .try_init()?;
+
+    Ok(())
 }
 
 #[tokio::main]
@@ -66,23 +42,9 @@ async fn main() {
     env_logger::init();
     dotenv::dotenv().ok();
 
-    let tracer = init_tracer().expect("failed to install tracing");
-
-    //creating a layer for Otel
-    let otel_layer = tracing_opentelemetry::layer().with_tracer(tracer);
-
-    // let subscriber = Registry::default().with(otel_layer);
-
-    //subscribing to tracing with opentelemetry
-    match tracing_subscriber::registry().with(otel_layer).try_init() {
-        Ok(_) => {}
-        Err(e) => {
-            println!("error while initializing tracing {}", e);
-        }
+    if let Err(e) = init_tracing() {
+        error!("failed to initialize telemetry: {}", e);
     }
-    // Initialise telemetry pipeline
-    // init_pipeline();
-    // let tracer = tracer("chronos_tracer");
 
     let kafka_config = KafkaConfig::from_env();
     let pg_config = PgConfig::from_env();
@@ -98,6 +60,5 @@ async fn main() {
     };
 
     debug!("debug logs starting chronos");
-
     r.run().await;
 }

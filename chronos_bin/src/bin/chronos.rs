@@ -14,9 +14,8 @@ async fn main() {
     env_logger::init();
     dotenvy::dotenv().ok();
 
-    let protocol = std::env::var("OTEL_EXPORTER_OTLP_PROTOCOL").unwrap_or_else(|_| "http/json".to_string());
-
-    let tracing_opentelemetry = TelemetryCollector::new(protocol, TelemetryCollectorType::Otlp);
+    //registering traces
+    let tracing_opentelemetry = TelemetryCollector::new(TelemetryCollectorType::Otlp);
     tracing_opentelemetry.register_traces();
 
     let kafka_config = KafkaConfig::from_env();

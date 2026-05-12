@@ -9,6 +9,8 @@ use std::time::Duration;
 use tokio_postgres::Row;
 use uuid::Uuid;
 
+use tracing::event;
+
 pub struct MessageProcessor {
     pub(crate) data_store: Arc<Pg>,
     pub(crate) producer: Arc<KafkaProducer>,
@@ -30,7 +32,7 @@ impl MessageProcessor {
         node_id
     }
 
-    #[tracing::instrument(skip_all, fields(correlationId))]
+    #[tracing::instrument(name = "prepare_to_publish", skip_all, fields(correlationId))]
     async fn prepare_to_publish(&self, row: Row) -> Result<String, String> {
         let updated_row = TableRow {
             id: row.get("id"),
@@ -111,7 +113,7 @@ impl MessageProcessor {
         }
     }
 
-    // #[tracing::instrument(skip_all)]
+    #[tracing::instrument(name = "processor_message_ready", skip_all, fields(correlationId))]
     async fn processor_message_ready(&self, node_id: Uuid) {
         loop {
             let method_name = "processor_message_ready";
@@ -140,9 +142,13 @@ impl MessageProcessor {
                         // closure to gather ids from results vector and ignore error from result
 
                         let ids: Vec<String> = results.into_iter().filter_map(|result| result.ok()).collect();
-
                         if !ids.is_empty() {
                             let _ = self.delete_fired_records_from_db(&ids).await;
+                            // event!(
+                            //     tracing::Level::INFO,
+                            //     "number of rows published successfully and deleted from DB: {:?}",
+                            //     ids.len()
+                            // );
                             log::debug!("{}: number of rows published successfully and deleted from DB {}", method_name, ids.len());
                             break;
                         }

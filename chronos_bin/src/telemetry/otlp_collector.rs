@@ -1,40 +1,45 @@
-use opentelemetry::trace::TraceError;
-use opentelemetry::{
-    global,
-    sdk::{propagation::TraceContextPropagator, trace as sdktrace},
-};
-use opentelemetry_otlp::{Protocol, WithExportConfig};
+use opentelemetry::global;
+use opentelemetry::trace::TracerProvider;
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::propagation::TraceContextPropagator;
+use opentelemetry_sdk::trace::{SdkTracerProvider, Tracer};
 
-pub struct OtlpCollector {}
-
-impl Default for OtlpCollector {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+pub struct OtlpCollector;
 
 impl OtlpCollector {
     pub fn new() -> Self {
-        OtlpCollector {}
+        Self
     }
 
-    pub fn http_collector_connect(&self, protocol: Protocol) -> Result<sdktrace::Tracer, TraceError> {
-        // service name will be picked from  "OTEL_SERVICE_NAME" env variable
+    pub fn grpc_collector_connect(&self) -> Result<Tracer, Box<dyn std::error::Error + Send + Sync>> {
+        let endpoint = std::env::var("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT not set"))?;
 
-        if let Ok(trace_exporter) = std::env::var("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") {
-            global::set_text_map_propagator(TraceContextPropagator::new());
-            opentelemetry_otlp::new_pipeline()
-                .tracing()
-                .with_exporter(opentelemetry_otlp::new_exporter().http().with_protocol(protocol).with_endpoint(trace_exporter))
-                .install_batch(opentelemetry::runtime::Tokio)
-        } else {
-            log::error!("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT not set");
+        global::set_text_map_propagator(TraceContextPropagator::new());
 
-            // trace error
-            Err(TraceError::Other(Box::new(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT not set",
-            ))))
-        }
+        let exporter = opentelemetry_otlp::SpanExporter::builder().with_tonic().with_endpoint(endpoint).build()?;
+
+        let provider = SdkTracerProvider::builder().with_batch_exporter(exporter).build();
+
+        global::set_tracer_provider(provider.clone());
+
+        let service_name = std::env::var("OTEL_SERVICE_NAME").unwrap_or_else(|_| "chronos".to_string());
+        Ok(provider.tracer(service_name))
+    }
+
+    pub fn http_collector_connect(&self) -> Result<Tracer, Box<dyn std::error::Error + Send + Sync>> {
+        let endpoint = std::env::var("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT")
+            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT not set"))?;
+
+        global::set_text_map_propagator(TraceContextPropagator::new());
+
+        let exporter = opentelemetry_otlp::SpanExporter::builder().with_http().with_endpoint(endpoint).build()?;
+
+        let provider = SdkTracerProvider::builder().with_batch_exporter(exporter).build();
+
+        global::set_tracer_provider(provider.clone());
+
+        let service_name = std::env::var("OTEL_SERVICE_NAME").unwrap_or_else(|_| "chronos".to_string());
+        Ok(provider.tracer(service_name))
     }
 }
