@@ -1,5 +1,6 @@
 #!make
 SHELL:=/bin/bash
+RUST_VERSION ?= 1.96.0
 
 # pp - pretty print function
 yellow := $(shell tput setaf 3)
@@ -58,7 +59,7 @@ pg.migrate:
 install:
 	$(call pp,pull rust dependencies...)
 	rustup install "${RUST_VERSION}"
-	rustup component add rust-src clippy llvm-tools-preview
+	rustup component add --toolchain "${RUST_VERSION}" rust-src clippy llvm-tools-preview
 	rustup toolchain install nightly
 	rustup override set "${RUST_VERSION}"
 	cargo install cargo2junit grcov
@@ -98,20 +99,15 @@ test.unit:
 	$(call pp,rust unit tests...)
 	cargo test
 
-## test.unit.coverage: 🧪 Runs rust unit tests with coverage 'cobertura' and 'junit' reports
-test.unit.coverage:
-	$(call pp,rust unit tests...)
-	sh scripts/coverage-report.sh
-
 ## docker.up: 🧪 Runs rust app in docker container along with kafka and postgres
 docker.up:
 	$(call pp,run app...)
-	docker-compose --env-file /dev/null up -d
+	docker compose up -d
 
 ## docker.down: bring down the docker containers
 docker.down:
 	$(call pp,run app...)
-	docker-compose down
+	docker compose down
 # PHONY ###########################################################################################
 
 # To force rebuild of not-file-related targets, make the targets "phony".
